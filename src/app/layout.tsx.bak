@@ -1,0 +1,87 @@
+"use client";
+
+import './globals.css';
+import { Toaster } from "@/components/ui/toaster"
+import { AppSidebar } from '@/components/layout/app-sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { Suspense, useEffect } from 'react';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { useRouter } from 'next/navigation';
+
+// Loading component for better UX
+function PageLoading() {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  )
+}
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const noSidebarPages = ['/login', '/signup'];
+  const isAuthPage = noSidebarPages.includes(pathname);
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('[AuthGate] pathname:', pathname, 'user:', user, 'loading:', loading, 'isAuthPage:', isAuthPage);
+  }
+
+  useEffect(() => {
+    if (!loading && !user && !isAuthPage) {
+      router.replace('/login');
+    }
+  }, [user, loading, isAuthPage, router]);
+
+  if (loading && !isAuthPage) {
+    return <PageLoading />;
+  }
+
+  return (
+    <Suspense fallback={<PageLoading />}>
+      {isAuthPage ? (
+        <main className="h-full">{children}</main>
+      ) : (
+        <SidebarProvider>
+          <div className="h-full bg-muted/40">
+            <AppSidebar />
+            <SidebarInset className="h-full overflow-y-auto p-4 md:p-8">
+              {children}
+            </SidebarInset>
+          </div>
+        </SidebarProvider>
+      )}
+    </Suspense>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="h-full">
+      <head>
+        <title>Studyverse Garden</title>
+        <meta name="description" content="Nurture your knowledge and watch it grow." />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className={cn("font-body antialiased h-full flex flex-col min-h-0")}> 
+        <ErrorBoundary>
+          <AuthProvider>
+            <AuthGate>{children}</AuthGate>
+            <Toaster />
+          </AuthProvider>
+        </ErrorBoundary>
+      </body>
+    </html>
+  );
+}
