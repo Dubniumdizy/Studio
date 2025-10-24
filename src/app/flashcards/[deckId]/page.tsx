@@ -5,7 +5,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, RotateCcw, PartyPopper, Home, AlertTriangle, Loader2 } from "lucide-react";
+import { ChevronLeft, RotateCcw, PartyPopper, Home, AlertTriangle, Loader2, CheckCircle2, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -80,8 +80,22 @@ export default function FlashcardReviewPage() {
         .sort(() => Math.random() - 0.5);
       
       if (dueCardIndices.length === 0) {
-        setSessionState('error');
-        setError('No cards are due for review. Come back later!');
+        // Check if all cards have been reviewed (have nextReview date)
+        const allCardsReviewed = deck.cards.every(card => card.nextReview !== null);
+        
+        if (allCardsReviewed) {
+          // Find the next card due for review
+          const nextReviewDate = deck.cards
+            .filter(card => card.nextReview)
+            .map(card => new Date(card.nextReview!))
+            .sort((a, b) => a.getTime() - b.getTime())[0];
+          
+          setSessionState('error');
+          setError(`all-done:${nextReviewDate?.toISOString() || ''}`);
+        } else {
+          setSessionState('error');
+          setError('no-cards');
+        }
         return;
       }
       
@@ -224,16 +238,55 @@ export default function FlashcardReviewPage() {
   }
 
   if (sessionState === 'error') {
+    // Parse error message
+    const isAllDone = error?.startsWith('all-done:');
+    const isNoCards = error === 'no-cards';
+    const nextReviewDateStr = isAllDone ? error?.split(':')[1] : null;
+    const nextReviewDate = nextReviewDateStr ? new Date(nextReviewDateStr) : null;
+    
+    if (isAllDone && nextReviewDate) {
+      const now = new Date();
+      const hoursUntilNext = Math.round((nextReviewDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+      const daysUntilNext = Math.round(hoursUntilNext / 24);
+      
+      return (
+        <div className="flex flex-col items-center justify-center text-center h-full max-w-2xl mx-auto py-10">
+          <CheckCircle2 className="w-16 h-16 text-green-500" />
+          <h2 className="mt-6 text-3xl font-bold font-headline">All Caught Up!</h2>
+          <p className="text-muted-foreground mt-2">
+            You've completed all cards in this deck for now.
+          </p>
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <Clock className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm font-medium">
+              Next review: {nextReviewDate.toLocaleDateString()} at {nextReviewDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {daysUntilNext > 0 
+                ? `in ${daysUntilNext} ${daysUntilNext === 1 ? 'day' : 'days'}` 
+                : hoursUntilNext > 0
+                ? `in ${hoursUntilNext} ${hoursUntilNext === 1 ? 'hour' : 'hours'}`
+                : 'very soon'}
+            </p>
+          </div>
+          <div className="mt-8 flex gap-4">
+            <Button onClick={() => router.push('/flashcards')}>
+              <Home className="mr-2 h-4 w-4" />
+              Back to Decks
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="flex flex-col items-center justify-center text-center h-full max-w-2xl mx-auto py-10">
         <AlertTriangle className="w-16 h-16 text-red-500" />
         <h2 className="mt-6 text-3xl font-bold font-headline">Oops!</h2>
-        <p className="text-muted-foreground mt-2 mb-6">{error || 'Something went wrong'}</p>
+        <p className="text-muted-foreground mt-2 mb-6">
+          {isNoCards ? 'This deck has no cards to study' : error || 'Something went wrong'}
+        </p>
         <div className="flex gap-4">
-          <Button onClick={retrySession} disabled={!deck}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Try Again
-          </Button>
           <Button variant="outline" onClick={() => router.push('/flashcards')}>
             <Home className="mr-2 h-4 w-4" />
             Back to Decks
