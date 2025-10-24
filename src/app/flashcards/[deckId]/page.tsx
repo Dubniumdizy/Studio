@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, RotateCcw, PartyPopper, Home, AlertTriangle, Loader2, CheckCircle2, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { findDeckInFileSystem, mockFlashcardSystem, findAndMutateDecks } from "@/lib/flashcard-data";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,7 @@ export default function FlashcardReviewPage() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const hasSaved = useRef(false);
 
   const { loading: saveLoading, execute: executeSave } = useSafeAsync({
     onSuccess: () => {
@@ -112,7 +113,8 @@ export default function FlashcardReviewPage() {
   }, [deck]);
 
   useEffect(() => {
-    if (sessionState === 'finished' && deck) {
+    if (sessionState === 'finished' && deck && !hasSaved.current) {
+      hasSaved.current = true;
       executeSave(async () => {
         await new Promise(resolve => setTimeout(resolve, 500));
         
@@ -214,6 +216,7 @@ export default function FlashcardReviewPage() {
     if (!deck) return;
     
     try {
+      hasSaved.current = false;
       const initialQueue = deck.cards.map((_, i) => i).sort(() => Math.random() - 0.5);
       setReviewQueue(initialQueue);
       setMasteredCount(0);
