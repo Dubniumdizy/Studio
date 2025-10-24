@@ -12,10 +12,13 @@ import {z} from 'genkit';
 
 const ExamFileSchema = z.object({
   name: z.string().describe('The name of the exam file.'),
+  // Prefer plain extracted text to avoid oversized requests
+  text: z.string().optional().describe('Extracted plain text content of the PDF (preferred).'),
   dataUri: z
     .string()
+    .optional()
     .describe(
-      "A PDF document of an exam, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "PDF as data URI (fallback). Expected: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 
@@ -110,7 +113,11 @@ Analyze all the provided exams to identify:
 Exams:
 {{#each exams}}
 Exam Name: {{{this.name}}}
+{{#if this.text}}
+{{{this.text}}}
+{{else}}
 {{media url=this.dataUri}}
+{{/if}}
 {{/each}}
 `,
 });

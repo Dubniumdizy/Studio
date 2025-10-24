@@ -224,6 +224,9 @@ function eventToRow(event: EnhancedCalendarEvent, userId: string) {
     energy_level: event.energyLevel ?? null,
     importance: event.importance ?? null,
     work_type: event.workType || null,
+    study_difficulty: (event as any).studyDifficulty ?? null,
+    mood_after: (event as any).moodAfter ?? null,
+    goal_achievement: (event as any).goalAchievement ?? null,
     checklist: event.checklist || [],
     reminders: event.reminders || [],
     location: (event as any).location || null,
@@ -244,6 +247,9 @@ function rowToEvent(row: any): EnhancedCalendarEvent {
     energyLevel: row.energy_level ?? undefined,
     importance: row.importance ?? undefined,
     workType: row.work_type || undefined,
+    studyDifficulty: row.study_difficulty ?? undefined,
+    moodAfter: row.mood_after ?? undefined,
+    goalAchievement: row.goal_achievement ?? undefined,
     checklist: row.checklist || [],
     reminders: row.reminders || [],
     location: row.location || undefined,
@@ -330,19 +336,11 @@ export default function EnhancedCalendarPage() {
       if (!uid) return
       const { data: rows, error: e2 } = await supabase
         .from('calendar_events')
-        .select('id,title,description,start,end,all_day,tags,energy_level,importance,work_type,checklist,reminders,location,recurrence,original_id')
+        .select('id,title,description,start,end,all_day,tags,energy_level,importance,work_type,study_difficulty,mood_after,goal_achievement,checklist,reminders,location,recurrence,original_id')
         .eq('user_id', uid)
         .order('start', { ascending: true })
       if (!e2 && rows) {
-        const mapped: EnhancedCalendarEvent[] = rows.map(row => ({
-          id: row.id,
-          title: row.title,
-          description: row.description || undefined,
-          start: new Date(row.start),
-          end: new Date(row.end),
-          allDay: !!row.all_day,
-          tags: row.tags || [],
-        }))
+        const mapped: EnhancedCalendarEvent[] = rows.map(rowToEvent)
         setEvents(prev => mergeEventsById(prev, mapped))
       }
     }
@@ -388,6 +386,30 @@ export default function EnhancedCalendarPage() {
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const importUrlInputRef = useRef<HTMLInputElement>(null)
+  
+  // Visible hours range
+  const [minHour, setMinHour] = useState<number>(6)
+  const [maxHour, setMaxHour] = useState<number>(23)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('calendar_hour_range')
+      if (raw) {
+        const obj = JSON.parse(raw)
+        const start = Number(obj.start)
+        const end = Number(obj.end)
+        if (Number.isFinite(start)) setMinHour(Math.max(0, Math.min(23, start)))
+        if (Number.isFinite(end)) setMaxHour(prev => Math.max(Number.isFinite(start)? Math.max(0, Math.min(23, start)) : minHour, Math.min(23, end)))
+      }
+    } catch {}
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('calendar_hour_range', JSON.stringify({ start: minHour, end: maxHour })) } catch {}
+  }, [minHour, maxHour])
+
+  // Diary modal state
+  const [diaryOpen, setDiaryOpen] = useState(false)
+  const [diaryPrompt, setDiaryPrompt] = useState('Something I learned today was...')
+  const [diaryTime, setDiaryTime] = useState('21:00')
   // Warnings
   const warnings = useMemo(() => {
     const list: string[] = []
@@ -1372,6 +1394,37 @@ export default function EnhancedCalendarPage() {
     exportToICS()
   }
 
+  const createDiaryEvent = async () => {
+    try {
+      const now = new Date()
+      const [hh, mm] = (diaryTime || '21:00').split(':').map((n) => Number(n))
+      const start = new Date(now)
+      start.setHours(Math.max(0, Math.min(23, hh || 21)), Math.max(0, Math.min(59, mm || 0)), 0, 0)
+      const end = new Date(start.getTime() + 30 * 60000)
+      const newEvent: EnhancedCalendarEvent = {
+        id: `event-${Date.now()}`,
+        title: 'Diary',
+        description: diaryPrompt || '',
+        start,
+        end,
+        allDay: false,
+        tags: ['diary'],
+        workType: 'personal',
+        recurrence: { type: 'daily' },
+        energyLevel: 1,
+        importance: 2,
+      } as EnhancedCalendarEvent
+      setEvents(prev => [...prev, newEvent])
+      if (userId) {
+        try { await supabase.from('calendar_events').upsert(eventToRow(newEvent, userId)) } catch {}
+      }
+      toast({ title: 'Diary created', description: `Daily prompt scheduled at ${diaryTime}.` })
+    } catch (e) {
+      console.warn('Failed to create diary event', e)
+      toast({ title: 'Failed to create diary', description: 'Please try again', variant: 'destructive' })
+    }
+  }
+
   const importData = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -1838,6 +1891,34 @@ export default function EnhancedCalendarPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Diary Modal */}
+      <Dialog open={diaryOpen} onOpenChange={setDiaryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Daily Diary Prompt</DialogTitle>
+            <DialogDescription>Schedule a repeating daily prompt at your chosen time.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Prompt</label>
+              <input className="w-full border rounded px-2 py-1 text-sm" value={diaryPrompt} onChange={e=>setDiaryPrompt(e.target.value)} placeholder="Something positive today was..." />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Time</label>
+              <input className="border rounded px-2 py-1 text-sm" type="time" value={diaryTime} onChange={e=>setDiaryTime(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary">Cancel</Button>
+            </DialogClose>
+            <DialogClose asChild>
+              <Button onClick={createDiaryEvent}>Create</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         title="Calendar"
         description="Manage your schedule, habits, and tasks"
@@ -1846,6 +1927,7 @@ export default function EnhancedCalendarPage() {
             <Button variant="outline" onClick={toggleExampleData}>
               {exampleDataActive ? 'Remove Example Data' : 'Add Example Data'}
             </Button>
+            <Button variant="outline" onClick={() => setDiaryOpen(true)}>Diary</Button>
             <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -2006,8 +2088,40 @@ export default function EnhancedCalendarPage() {
                   </div>
                 </div>
 
-                <div className="text-lg font-semibold">
-                  {format(currentDate, 'MMMM yyyy')}
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Hours</span>
+                    <select
+                      className="border rounded px-1 py-1 bg-background"
+                      value={minHour}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        setMinHour(v)
+                        if (v > maxHour) setMaxHour(v)
+                      }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                        <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>
+                      ))}
+                    </select>
+                    <span>-</span>
+                    <select
+                      className="border rounded px-1 py-1 bg-background"
+                      value={maxHour}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        setMaxHour(v)
+                        if (v < minHour) setMinHour(v)
+                      }}
+                    >
+                      {Array.from({ length: 24 - minHour }, (_, i) => minHour + i).map(h => (
+                        <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {format(currentDate, 'MMMM yyyy')}
+                  </div>
                 </div>
               </div>
 
@@ -2020,6 +2134,8 @@ export default function EnhancedCalendarPage() {
                     onEventClick={handleEventClick}
                     onCreateEvent={handleTimeSlotClick}
                     onDateClick={(date) => setCurrentDate(date)}
+                    minHour={minHour}
+                    maxHour={maxHour}
                   />
                 )}
 
@@ -2029,6 +2145,8 @@ export default function EnhancedCalendarPage() {
                     events={eventsInRange}
                     onEventClick={handleEventClick}
                     onCreateEvent={handleTimeSlotClick}
+                    minHour={minHour}
+                    maxHour={maxHour}
                   />
                 )}
 

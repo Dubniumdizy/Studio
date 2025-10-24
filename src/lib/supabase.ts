@@ -90,6 +90,9 @@ export interface FlashcardDeck {
   name: string
   description?: string
   cards_count: number
+  srs_good_interval: number
+  srs_easy_interval: number
+  archive_days: number
   created_at: string
   updated_at: string
 }
@@ -99,10 +102,11 @@ export interface Flashcard {
   deck_id: string
   front: string
   back: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  last_reviewed?: string
-  next_review?: string
-  repetitions: number
+  front_image?: string
+  back_image?: string
+  difficulty: 'again' | 'good' | 'easy' | null
+  last_reviewed?: string | null
+  next_review?: string | null
   created_at: string
   updated_at: string
 }

@@ -13,6 +13,9 @@ import {
   MiniResourcesWidget,
   MiniAIFriendWidget,
   MiniInspirationWidget,
+  MiniOverwhelmedWidget,
+  MiniChecklistWidget,
+  MiniQuestionsWidget,
   MiniSettingsWidget
 } from '@/components/dashboard/MiniWidgets'
 import { Button } from '@/components/ui/button'
@@ -44,6 +47,9 @@ const widgetTypes = {
   resources: { title: 'Resources', component: <MiniResourcesWidget /> },
   ai: { title: 'AI Study Buddy', component: <MiniAIFriendWidget /> },
   inspiration: { title: 'Inspiration', component: <MiniInspirationWidget /> },
+  overwhelmed: { title: 'Overwhelmed', component: <MiniOverwhelmedWidget /> },
+  checklist: { title: 'Checklist', component: <MiniChecklistWidget /> },
+  questions: { title: 'Questions', component: <MiniQuestionsWidget /> },
   settings: { title: 'Settings', component: <MiniSettingsWidget /> }
 };
 
@@ -279,6 +285,9 @@ export default function HomePage() {
                     { type: 'resources', label: 'Resources' },
                     { type: 'ai', label: 'AI Buddy' },
                     { type: 'inspiration', label: 'Inspiration' },
+                    { type: 'overwhelmed', label: 'Overwhelmed' },
+                    { type: 'checklist', label: 'Checklist' },
+                    { type: 'questions', label: 'Questions' },
                     { type: 'settings', label: 'Settings' }
                   ].map(({ type, label }) => (
                     <Button

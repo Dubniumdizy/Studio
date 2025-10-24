@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sidebar,
   SidebarHeader,
@@ -80,6 +80,56 @@ const CollapsibleSection = ({
 
 export function AppSidebar() {
   const { toggleSidebar, state } = useSidebar();
+  const [sidebarVisibility, setSidebarVisibility] = useState<Record<string, boolean>>({
+    'dashboard': true,
+    'calendar': true,
+    'goals': true,
+    'analytics': true,
+    'subject-setup': true,
+    'inspiration': true,
+    'resources': true,
+    'study-timer': true,
+    'flashcards': true,
+    'bank': true,
+    'book-analyzer': true,
+    'formula-sheet': true,
+    'mock-exams': true,
+    'exam-analyzer': true,
+    'study-buddy': true,
+  });
+
+  useEffect(() => {
+    // Load visibility settings from localStorage
+    try {
+      const saved = localStorage.getItem('sidebarVisibility');
+      if (saved) {
+        setSidebarVisibility(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Failed to load sidebar visibility:', error);
+    }
+
+    // Listen for storage changes (when settings are updated)
+    const handleStorageChange = () => {
+      try {
+        const saved = localStorage.getItem('sidebarVisibility');
+        if (saved) {
+          setSidebarVisibility(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error('Failed to reload sidebar visibility:', error);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event from same tab
+    window.addEventListener('sidebarVisibilityUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sidebarVisibilityUpdated', handleStorageChange);
+    };
+  }, []);
 
   return (
     <Sidebar collapsible="icon">
@@ -109,101 +159,130 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
       <SidebarContent className="p-2 space-y-1">
-        <SidebarMenu>
-            <SidebarMenuItem>
-                <NavLink href="/dashboard" icon={<BarChart3 />} tooltip="Dashboard">Dashboard</NavLink>
-            </SidebarMenuItem>
-        </SidebarMenu>
+        {sidebarVisibility['dashboard'] && (
+          <SidebarMenu>
+              <SidebarMenuItem>
+                  <NavLink href="/dashboard" icon={<BarChart3 />} tooltip="Dashboard">Dashboard</NavLink>
+              </SidebarMenuItem>
+          </SidebarMenu>
+        )}
 
-        <CollapsibleSection title="Planning" icon={<Calendar size={16} />}>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <NavLink href="/calendar" icon={<Calendar />} tooltip="Calendar">Calendar</NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <NavLink href="/goals" icon={<Target />} tooltip="Goals">Goals</NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <NavLink href="/analytics" icon={<BarChart3 />} tooltip="Analytics">Analytics</NavLink>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </CollapsibleSection>
+        {(sidebarVisibility['calendar'] || sidebarVisibility['goals'] || sidebarVisibility['analytics']) && (
+          <CollapsibleSection title="Planning" icon={<Calendar size={16} />}>
+              <SidebarMenu>
+                  {sidebarVisibility['calendar'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/calendar" icon={<Calendar />} tooltip="Calendar">Calendar</NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['goals'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/goals" icon={<Target />} tooltip="Goals">Goals</NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['analytics'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/analytics" icon={<BarChart3 />} tooltip="Analytics">Analytics</NavLink>
+                    </SidebarMenuItem>
+                  )}
+              </SidebarMenu>
+          </CollapsibleSection>
+        )}
 
-        <CollapsibleSection title="Pre Study" icon={<Package size={16} />}>
-            <SidebarMenu>
-                 <SidebarMenuItem>
-                  <NavLink href="/subject-setup" icon={<Library />} tooltip="Subject Setup">Subject Setup</NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/inspiration" icon={<Sparkles />} tooltip="Inspiration">
-                    Inspiration
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/exam-analyzer" icon={<FileSearch />} tooltip="Analyzer">
-                    Analyzer
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/resources" icon={<Folder />} tooltip="Resources">
-                    Resources
-                </NavLink>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </CollapsibleSection>
+        {(sidebarVisibility['subject-setup'] || sidebarVisibility['inspiration'] || sidebarVisibility['resources']) && (
+          <CollapsibleSection title="Pre Study" icon={<Package size={16} />}>
+              <SidebarMenu>
+                  {sidebarVisibility['subject-setup'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/subject-setup" icon={<Library />} tooltip="Subject Setup">Subject Setup</NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['inspiration'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/inspiration" icon={<Sparkles />} tooltip="Inspiration">
+                          Inspiration
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['resources'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/resources" icon={<Folder />} tooltip="Resources">
+                          Resources
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+              </SidebarMenu>
+          </CollapsibleSection>
+        )}
         
-        <CollapsibleSection title="Deep Study" icon={<BrainCircuit size={16} />}>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                <NavLink href="/study-timer" icon={<Timer />} tooltip="Study Timer">
-                    Study Timer
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/flashcards" icon={<Copy />} tooltip="Flashcards">
-                    Flashcards
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/bank" icon={<FolderKanban />} tooltip="Bank">
-                    Bank
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/formula-sheet" icon={<FunctionSquare />} tooltip="Formula Sheet">
-                    Formula Sheet
-                </NavLink>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                <NavLink href="/book-analyzer" icon={<BookOpen />} tooltip="Book Analyzer">
-                    Book Analyzer
-                </NavLink>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                <NavLink href="/question-bank" icon={<HelpCircle />} tooltip="Question Bank">
-                    Question Bank
-                </NavLink>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </CollapsibleSection>
+        {(sidebarVisibility['study-timer'] || sidebarVisibility['flashcards'] || sidebarVisibility['bank'] || sidebarVisibility['book-analyzer']) && (
+          <CollapsibleSection title="Deep Study" icon={<BrainCircuit size={16} />}>
+              <SidebarMenu>
+                  {sidebarVisibility['study-timer'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/study-timer" icon={<Timer />} tooltip="Study Timer">
+                          Study Timer
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['flashcards'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/flashcards" icon={<Copy />} tooltip="Flashcards">
+                          Flashcards
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['bank'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/bank" icon={<FolderKanban />} tooltip="Bank">
+                          Bank
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['book-analyzer'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/book-analyzer" icon={<BookOpen />} tooltip="Book Analyzer">
+                          Book Analyzer
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+              </SidebarMenu>
+          </CollapsibleSection>
+        )}
         
-        <CollapsibleSection title="Exam Prep" icon={<ClipboardList size={16} />}>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <NavLink href="/mock-exams" icon={<ClipboardCheck />} tooltip="Mock Exams">Mock Exams</NavLink>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </CollapsibleSection>
+        {(sidebarVisibility['formula-sheet'] || sidebarVisibility['mock-exams'] || sidebarVisibility['exam-analyzer']) && (
+          <CollapsibleSection title="Exam Prep" icon={<ClipboardList size={16} />}>
+              <SidebarMenu>
+                  {sidebarVisibility['formula-sheet'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/examprep/formula-sheet" icon={<FunctionSquare />} tooltip="Formula Sheet">Formula Sheet</NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['mock-exams'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/mock-exams" icon={<ClipboardCheck />} tooltip="Mock Exams">Mock Exams</NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['exam-analyzer'] && (
+                    <SidebarMenuItem>
+                        <NavLink href="/exam-analyzer" icon={<FileSearch />} tooltip="Exam Analyzer">Exam Analyzer</NavLink>
+                    </SidebarMenuItem>
+                  )}
+              </SidebarMenu>
+          </CollapsibleSection>
+        )}
 
-        <CollapsibleSection title="Help" icon={<Bot size={16} />}>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                <NavLink href="/study-buddy" icon={<Bot />} tooltip="Study Buddy">
-                    Study Buddy
-                </NavLink>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </CollapsibleSection>
+        {sidebarVisibility['study-buddy'] && (
+          <CollapsibleSection title="Help" icon={<Bot size={16} />}>
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                    <NavLink href="/study-buddy" icon={<Bot />} tooltip="Study Buddy">
+                        Study Buddy
+                    </NavLink>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+          </CollapsibleSection>
+        )}
 
       </SidebarContent>
       <SidebarFooter className="p-2">

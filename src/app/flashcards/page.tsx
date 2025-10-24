@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef, Fragment, useCallback } from "react";
+import React, { useState, useRef, Fragment, useCallback, useMemo } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { mockFlashcardSystem, addItemToFolder, findAndMutateDecks, type FileSystemItem, type Deck, type Folder, findItemInFileSystem } from "@/lib/flashcard-data";
-import { Folder as FolderIcon, MoreHorizontal, Pencil, Copy, Trash2, FolderOpen, PlusCircle, Brain, BookCopy, FolderPlus, Move, FolderKanban, Loader2, AlertTriangle } from "lucide-react";
+import { findStaleCards } from "@/lib/flashcard-archive";
+import { Folder as FolderIcon, MoreHorizontal, Pencil, Copy, Trash2, FolderOpen, PlusCircle, Brain, BookCopy, FolderPlus, Move, FolderKanban, Loader2, AlertTriangle, FileText, Archive } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,15 +43,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSafeAsync } from "@/hooks/use-safe-async";
 import { validateForm, deckSchema, folderSchema } from "@/lib/validation";
+import { PDFToFlashcardsDialog } from "@/components/flashcards/pdf-to-flashcards-dialog";
 
 export default function FlashcardsPage() {
   const [items, setItems] = useState<FileSystemItem[]>(mockFlashcardSystem);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ 'folder-1': true });
+  const staleCardsCount = useMemo(() => findStaleCards(items).length, [items]);
   
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [isPDFDialogOpen, setIsPDFDialogOpen] = useState(false);
   
   const [selectedItem, setSelectedItem] = useState<FileSystemItem | null>(null);
   const [itemToMove, setItemToMove] = useState<FileSystemItem | null>(null);
@@ -263,6 +267,7 @@ export default function FlashcardsPage() {
             cards: [],
             srsGoodInterval: 1,
             srsEasyInterval: 4,
+            archiveDays: 90,
             lastStudied: null,
           };
 
@@ -276,6 +281,41 @@ export default function FlashcardsPage() {
       return newItems;
     });
   }, [newName, createType, createParentId, items, executeCreate]);
+
+  const handleCreateDeckFromPDF = useCallback(async (deckData: {
+    name: string
+    description: string
+    subject: string
+    cards: { id: string; front: string; back: string }[]
+  }) => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    const newDeck: Deck = {
+      id: `deck-${Date.now()}`,
+      type: 'deck',
+      name: deckData.name,
+      description: deckData.description,
+      subject: deckData.subject,
+      cards: deckData.cards.map(card => ({
+        ...card,
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      })),
+      srsGoodInterval: 1,
+      srsEasyInterval: 4,
+      archiveDays: 90,
+      lastStudied: null,
+    }
+    
+    const newItems = addItemToFolder(JSON.parse(JSON.stringify(items)), null, newDeck)
+    
+    // Update shared mock data
+    mockFlashcardSystem.length = 0
+    mockFlashcardSystem.push(...newItems)
+    setItems(newItems)
+  }, [items])
 
   const handleConfirmMove = useCallback(async (destinationFolderId: string | null) => {
     if (!itemToMove) return;
@@ -400,6 +440,22 @@ export default function FlashcardsPage() {
           description="Organize your study materials into decks and folders. Create, review, and master your knowledge." 
         />
         <div className="flex gap-2">
+          <Link href="/flashcards/archive">
+            <Button 
+              variant="outline"
+              className={cn(
+                staleCardsCount > 0 && "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              )}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              Archive
+              {staleCardsCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-200 text-orange-800">
+                  {staleCardsCount}
+                </span>
+              )}
+            </Button>
+          </Link>
           <Button onClick={() => handleOpenCreateDialog(null, 'folder')}>
             <FolderPlus className="mr-2 h-4 w-4" />
             New Folder
@@ -407,6 +463,14 @@ export default function FlashcardsPage() {
           <Button onClick={() => handleOpenCreateDialog(null, 'deck')}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New Deck
+          </Button>
+          <Button 
+            onClick={() => setIsPDFDialogOpen(true)}
+            variant="outline"
+            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            PDF to Flashcards
           </Button>
         </div>
       </div>
@@ -568,6 +632,14 @@ export default function FlashcardsPage() {
         allItems={items} 
         onConfirmMove={handleConfirmMove}
         loading={moveLoading}
+      />
+
+      {/* PDF to Flashcards Dialog */}
+      <PDFToFlashcardsDialog
+        isOpen={isPDFDialogOpen}
+        onOpenChange={setIsPDFDialogOpen}
+        onCreateDeck={handleCreateDeckFromPDF}
+        createLoading={createLoading}
       />
     </div>
   );

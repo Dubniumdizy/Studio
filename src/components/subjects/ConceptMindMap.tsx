@@ -44,7 +44,7 @@ function canonicalTokens(s: string): string[] {
       graph: 'graph', theory: 'graph',
       space: 'space', spaces: 'space', span: 'span',
       orthogonal: 'ortho', orthonormal: 'ortho', projection: 'project',
-      tensor: 'tensor', product: 'product',
+      tensor: 'tensor',
     }
     if (syn[t]) push(syn[t])
     push(t)

@@ -185,9 +185,11 @@ interface WeekViewProps {
     onDateClick: (date: Date) => void;
     onEventClick: (event: EnhancedCalendarEvent) => void;
     onCreateEvent: (date: Date, time: string) => void;
+    minHour?: number; // inclusive
+    maxHour?: number; // inclusive
 }
 
-const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClick, onEventClick, onCreateEvent }) => {
+const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClick, onEventClick, onCreateEvent, minHour = 0, maxHour = 23 }) => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
     const headerHeight = 74;
@@ -195,7 +197,8 @@ const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClic
     const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
-        const hour = Math.floor(offsetY / HOUR_HEIGHT);
+        const hourOffset = Math.floor(offsetY / HOUR_HEIGHT);
+        const hour = Math.min(23, Math.max(0, (minHour + hourOffset)));
         const minutes = Math.floor(((offsetY % HOUR_HEIGHT) / HOUR_HEIGHT) * 4) * 15; // Snap to 15 mins
         const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         const date = addDays(weekStart, dayIndex);
@@ -220,7 +223,7 @@ const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClic
 
     return (
         <div className="flex-grow overflow-auto bg-card rounded-lg border flex">
-            <TimeGutter headerHeight={headerHeight} />
+            <TimeGutter headerHeight={headerHeight} minHour={minHour} maxHour={maxHour} />
 
             <div className="flex-grow grid grid-cols-7 relative">
                 {days.map((day, dayIndex) => {
@@ -234,20 +237,32 @@ const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClic
                                 <p className={cn("text-2xl font-bold", { "text-primary": isToday(day) })}>{format(day, 'd')}</p>
                             </div>
                             <div className="relative h-full" onClick={(e) => handleGridClick(e, dayIndex)}>
-                                {HOURS_24.map(hour => (
+                                {(() => {
+                                  const hours = Array.from({ length: Math.max(1, (maxHour - minHour + 1)) }, (_, i) => minHour + i);
+                                  return hours.map(hour => (
                                     <div key={`${day.getTime()}-${hour}`} className="border-b border-dashed cursor-pointer" style={{ height: `${HOUR_HEIGHT}px` }} />
-                                ))}
+                                  ));
+                                })()}
                                 <div className="absolute top-0 left-0 right-0 h-full pointer-events-none">
 {(() => {
                                         const layout = computeEventColumns(dayEvents)
                                         return dayEvents.map(event => {
+                                          // Compute visible segment within [minHour, maxHour+1)
+                                          const dayStart = new Date(day);
+                                          dayStart.setHours(minHour, 0, 0, 0);
+                                          const dayEnd = new Date(day);
+                                          dayEnd.setHours(maxHour + 1, 0, 0, 0);
+                                          const visibleStartMs = Math.max(event.start.getTime(), dayStart.getTime());
+                                          const visibleEndMs = Math.min(event.end.getTime(), dayEnd.getTime());
+                                          if (visibleEndMs <= visibleStartMs) return null;
+
                                           const isDeadline = hasDeadlineTag(event.tags || []) || (event.tags || []).includes('theme:black');
                                           const colorClasses = isDeadline ? 'border-black bg-black text-white' : getEnergyColor(event.energyLevel);
-                                          const startHour = event.start.getHours();
-                                          const startMinute = event.start.getMinutes();
-                                          const topPosition = (startHour * HOUR_HEIGHT) + (startMinute / 60 * HOUR_HEIGHT);
-                                          const durationHours = (event.end.getTime() - event.start.getTime()) / (1000 * 60 * 60);
-                                          const height = Math.max(durationHours * HOUR_HEIGHT, 30);
+
+                                          const vs = new Date(visibleStartMs);
+                                          const topPosition = ((vs.getHours() + (vs.getMinutes()/60)) - minHour) * HOUR_HEIGHT;
+                                          const durationHours = (visibleEndMs - visibleStartMs) / (1000 * 60 * 60);
+                                          const height = Math.max(durationHours * HOUR_HEIGHT, 20);
                                           const colInfo = layout[event.id] || { col: 0, colCount: 1 }
                                           const leftPercent = (colInfo.col * 100) / Math.max(colInfo.colCount, 1)
                                           const widthPercent = 100 / Math.max(colInfo.colCount, 1)
@@ -307,7 +322,7 @@ const WeekViewImpl: React.FC<WeekViewProps> = ({ currentDate, events, onDateClic
 
                 {days.some(day => isToday(day)) && (
                     <div className="absolute left-0 right-0 h-full z-10 pointer-events-none" style={{ marginTop: `${headerHeight}px` }}>
-                        <TimeIndicator />
+                        <TimeIndicator minHour={minHour} maxHour={maxHour} />
                     </div>
                 )}
             </div>
@@ -322,9 +337,11 @@ interface DayViewProps {
     events: EnhancedCalendarEvent[];
     onEventClick: (event: EnhancedCalendarEvent) => void;
     onCreateEvent: (date: Date, time: string) => void;
+    minHour?: number; // inclusive
+    maxHour?: number; // inclusive
 }
 
-const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onCreateEvent }) => {
+const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onCreateEvent, minHour = 0, maxHour = 23 }) => {
     const headerHeight = 74; // Match WeekView
 
     // Get events for this day, including cross-day events
@@ -337,11 +354,16 @@ const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick
     }, [events, currentDate]);
 
     const getEventPosition = (event: EnhancedCalendarEvent) => {
-        const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
-        const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
-        const duration = Math.max(endMinutes - startMinutes, 15); // ensure minimum height maps to >= 15 mins
-        const top = (startMinutes / 60) * HOUR_HEIGHT;
-        const height = (duration / 60) * HOUR_HEIGHT;
+        const dayStart = new Date(currentDate);
+        dayStart.setHours(minHour, 0, 0, 0);
+        const dayEnd = new Date(currentDate);
+        dayEnd.setHours(maxHour + 1, 0, 0, 0);
+        const visibleStartMs = Math.max(event.start.getTime(), dayStart.getTime());
+        const visibleEndMs = Math.min(event.end.getTime(), dayEnd.getTime());
+        const clamped = Math.max(visibleEndMs - visibleStartMs, 5 * 60 * 1000); // at least 5 minutes
+        const vs = new Date(visibleStartMs);
+        const top = ((vs.getHours() + (vs.getMinutes()/60)) - minHour) * HOUR_HEIGHT;
+        const height = (clamped / (1000 * 60 * 60)) * HOUR_HEIGHT;
         return { top, height };
     };
 
@@ -361,7 +383,9 @@ const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick
 
                     {/* TimeGutter hours */}
                     <div className="relative">
-                        {HOURS_24.map(hour => (
+                        {(() => {
+                          const hours = Array.from({ length: Math.max(1, (maxHour - minHour + 1)) }, (_, i) => minHour + i);
+                          return hours.map(hour => (
                             <div
                                 key={hour}
                                 className="border-r border-b border-dashed text-xs text-muted-foreground flex items-center justify-center"
@@ -369,17 +393,19 @@ const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick
                             >
                                 {String(hour).padStart(2, '0') + ':00'}
                             </div>
-                        ))}
+                          ));
+                        })()}
                     </div>
 
                     {/* Day column */}
                     <div
                         className="relative"
-                        style={{ height: `${24 * HOUR_HEIGHT}px` }}
+                        style={{ height: `${(maxHour - minHour + 1) * HOUR_HEIGHT}px` }}
                         onClick={e => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             const offsetY = e.clientY - rect.top;
-                            const hour = Math.floor(offsetY / HOUR_HEIGHT);
+                            const hourOffset = Math.floor(offsetY / HOUR_HEIGHT);
+                            const hour = Math.min(23, Math.max(0, minHour + hourOffset));
                             const minutes = Math.floor(((offsetY % HOUR_HEIGHT) / HOUR_HEIGHT) * 4) * 15;
                             const date = new Date(currentDate);
                             date.setHours(hour, minutes, 0, 0);
@@ -387,13 +413,16 @@ const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick
                         }}
                     >
                         {/* Hour grid lines */}
-                        {HOURS_24.map(hour => (
+                        {(() => {
+                          const hours = Array.from({ length: Math.max(1, (maxHour - minHour + 1)) }, (_, i) => minHour + i);
+                          return hours.map(hour => (
                             <div
                                 key={hour}
                                 className="border-b border-dashed"
                                 style={{ height: HOUR_HEIGHT }}
                             />
-                        ))}
+                          ));
+                        })()}
 
                         {/* Events */}
 {(() => {
@@ -450,8 +479,8 @@ const DayViewImpl: React.FC<DayViewProps> = ({ currentDate, events, onEventClick
 
                         {/* Current time indicator */}
                         {isToday(currentDate) && (
-                            <div className="absolute inset-x-0 z-20 pointer-events-none" style={{ height: `${24 * HOUR_HEIGHT}px`, top: 0 }}>
-                                <TimeIndicator />
+                            <div className="absolute inset-x-0 z-20 pointer-events-none" style={{ height: `${(maxHour - minHour + 1) * HOUR_HEIGHT}px`, top: 0 }}>
+                                <TimeIndicator minHour={minHour} maxHour={maxHour} />
                             </div>
                         )}
                     </div>

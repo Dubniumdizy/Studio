@@ -295,17 +295,23 @@ export default function InspirationPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const subject = formData.get("subject") as string;
-    const courseMaterials = formData.get("courseMaterials") as string;
+    const knownUnderstanding = (formData.get("knownUnderstanding") as string) || '';
+    const learningGoal = (formData.get("learningGoal") as string) || '';
+    const courseMaterials = (formData.get("courseMaterials") as string) || '';
 
-    if (!subject.trim() || !courseMaterials.trim()) {
-      setError("Please provide both a subject and some course material context.");
+    if (!subject.trim()) {
+      setError("Please provide a subject.");
+      return;
+    }
+    if (!knownUnderstanding.trim() || !learningGoal.trim()) {
+      setError("Please write what you already understand and what you want to understand.");
       return;
     }
     setError(null);
     setInspiration(null);
     
     startTransition(async () => {
-      const result = await generateInspiration({ subject, courseMaterials });
+      const result = await generateInspiration({ subject, knownUnderstanding, learningGoal, courseMaterials });
       if (result) {
         setInspiration(result);
       } else {
@@ -318,7 +324,7 @@ export default function InspirationPage() {
     <div>
       <PageHeader
         title="Inspiration Generator"
-        description="Find new motivation by connecting your studies to the bigger picture."
+        description="Write two short notes: (1) what you already understand, and (2) what you want to understand. We’ll build inspiration that bridges from your current understanding to your goal."
       />
 
       {/* Show either the input form or the full-width answer, not both */}
@@ -328,7 +334,7 @@ export default function InspirationPage() {
             <CardHeader>
               <CardTitle>Find Your Spark</CardTitle>
               <CardDescription>
-                Enter your subject and some context from your course materials (e.g., topics, chapter names, key concepts).
+                Start by clarifying your own map: first list what you already understand, then what you want to understand. The inspiration will use what you already know as the lens for explaining new ideas.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -338,12 +344,30 @@ export default function InspirationPage() {
                   <Input id="subject" name="subject" placeholder="e.g., Linear Algebra" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="courseMaterials">Course Materials Context</Label>
+                  <Label htmlFor="knownUnderstanding">What I already understand</Label>
+                  <Textarea 
+                    id="knownUnderstanding"
+                    name="knownUnderstanding"
+                    placeholder="e.g., I can compute matrix products, solve linear systems with row-reduction, and understand column space/rank."
+                    className="min-h-[120px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="learningGoal">What I want to understand next</Label>
+                  <Textarea 
+                    id="learningGoal"
+                    name="learningGoal"
+                    placeholder="e.g., Why eigenvalues/eigenvectors matter, spectral decomposition, and geometric meaning of linear transformations."
+                    className="min-h-[120px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="courseMaterials">Optional: Course materials context</Label>
                   <Textarea 
                     id="courseMaterials"
                     name="courseMaterials"
-                    placeholder="e.g., Vectors, matrices, eigenvalues, determinants, vector spaces..."
-                    className="min-h-[150px]"
+                    placeholder="Optional—topics/chapters/keywords to include (e.g., Vectors, matrices, eigenvalues, determinants...)"
+                    className="min-h-[100px]"
                   />
                 </div>
                 <Button type="submit" disabled={isPending} className="w-full">

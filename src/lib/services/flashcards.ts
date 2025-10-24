@@ -7,7 +7,13 @@ export class FlashcardService {
   async createDeck(deck: Omit<FlashcardDeck, 'id' | 'created_at' | 'updated_at' | 'cards_count'>) {
     const { data, error } = await supabase
       .from('flashcard_decks')
-      .insert({ ...deck, cards_count: 0 })
+      .insert({ 
+        ...deck, 
+        cards_count: 0,
+        srs_good_interval: deck.srs_good_interval || 1,
+        srs_easy_interval: deck.srs_easy_interval || 4,
+        archive_days: deck.archive_days || 90,
+      })
       .select()
       .single()
 
@@ -66,13 +72,14 @@ export class FlashcardService {
   }
 
   // Card operations
-  async createCard(card: Omit<Flashcard, 'id' | 'created_at' | 'updated_at' | 'repetitions' | 'last_reviewed' | 'next_review'>) {
+  async createCard(card: Omit<Flashcard, 'id' | 'created_at' | 'updated_at' | 'last_reviewed' | 'next_review'>) {
     const { data, error } = await supabase
       .from('flashcards')
       .insert({ 
-        ...card, 
-        repetitions: 0,
-        next_review: new Date().toISOString()
+        ...card,
+        last_reviewed: null,
+        next_review: null,
+        difficulty: null,
       })
       .select()
       .single()
@@ -130,29 +137,29 @@ export class FlashcardService {
   }
 
   // Review operations
-  async markCardReviewed(cardId: string, difficulty: 'easy' | 'medium' | 'hard') {
+  async markCardReviewed(
+    cardId: string, 
+    difficulty: 'again' | 'good' | 'easy',
+    deckSettings: { srs_good_interval: number; srs_easy_interval: number }
+  ) {
     const now = new Date()
     let nextReviewDate = new Date(now)
 
-    // Simple spaced repetition algorithm
-    switch (difficulty) {
-      case 'easy':
-        nextReviewDate.setDate(now.getDate() + 3)
-        break
-      case 'medium':
-        nextReviewDate.setDate(now.getDate() + 1)
-        break
-      case 'hard':
-        nextReviewDate.setHours(now.getHours() + 1)
-        break
+    // Apply spaced repetition based on deck settings
+    if (difficulty === 'good') {
+      nextReviewDate.setDate(now.getDate() + deckSettings.srs_good_interval)
+    } else if (difficulty === 'easy') {
+      nextReviewDate.setDate(now.getDate() + deckSettings.srs_easy_interval)
+    } else {
+      // 'again' - keep in current session, no next_review update
+      nextReviewDate = now
     }
 
     const { data, error } = await supabase
       .from('flashcards')
       .update({
         last_reviewed: now.toISOString(),
-        next_review: nextReviewDate.toISOString(),
-        repetitions: (undefined as any),
+        next_review: difficulty === 'again' ? null : nextReviewDate.toISOString(),
         difficulty,
         updated_at: now.toISOString()
       })

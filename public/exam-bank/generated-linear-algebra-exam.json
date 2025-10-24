@@ -1,0 +1,68 @@
+{
+  "examTitle": "Generated Linear Algebra Exam",
+  "questions": [
+    {
+      "questionNumber": 1,
+      "question": "Let V = C<4[x] be the set of polynomials of degree at most 4 with complex coefficients, and let L: V -> V be given by L(p(x)) = p'(x) - xp(x). Determine a Jordan basis for L.",
+      "solution": "First, choose a basis for V, say {1, x, x^2/2!, x^3/3!, x^4/4!}. Then, find the matrix representation of L with respect to this basis. Calculate the characteristic polynomial and eigenvalues. Find the generalized eigenvectors by finding the kernels of (A - λI)^k for appropriate k. Construct a Jordan basis from the generalized eigenvectors.",
+      "difficulty": "medium"
+    },
+    {
+      "questionNumber": 2,
+      "question": "Let (·|·) be the inner product on V = C^2 given by the matrix G = [[3, -i], [i, 2]] and let L: V -> V be given by the matrix A = [[2, 1], [1, 3]]. Find the matrix for the adjoint operator L† using the definition.",
+      "solution": "We seek a matrix B such that (Bx|y)_G = (x|Ay)_G for all x, y in C^2. This is equivalent to B†G = GA, so B = (G^(-1)AG)†. Compute G^(-1), then compute B = (G^(-1)AG)†. Simplify to find the matrix B.",
+      "difficulty": "medium"
+    },
+    {
+      "questionNumber": 3,
+      "question": "Determine whether K = {aI + bA : a,b ∈ Z/7Z} is a field for each of the matrices A in the set {[[0, -1], [1, 0]], [[1, -1], [1, 1]], [[2, 1], [1, 2]], [[1, 2], [2, 1]]} ⊆ M2(Z/7Z).",
+      "solution": "K is a field if and only if the minimal polynomial of A is irreducible. Find the characteristic polynomial p_A(x) = x^2 - tr(A)x + det(A) for each matrix A. Check if p_A(x) has roots in Z/7Z. If p_A(x) is irreducible, then K is a field. Only the matrices with irreducible characteristic polynomials will make K a field.",
+      "difficulty": "medium"
+    },
+    {
+      "questionNumber": 4,
+      "question": "(a) Prove that for a linear map L: V -> W, L is surjective if and only if im(L) = W. (b) Give an example of a surjective linear map L: V -> W that is not injective. (c) State and prove the rank-nullity theorem for linear maps L: V -> W.",
+      "solution": "(a) L is surjective if and only if every element in W has a pre-image in V, which is equivalent to im(L) = W. (b) Consider L: R^2 -> R defined by L(x, y) = x. This is surjective but not injective since L(0, y) = 0 for all y. (c) The rank-nullity theorem states that dim(V) = dim(ker(L)) + dim(im(L)). Proof: Choose a basis for ker(L), extend it to a basis for V, and show that the images of the added vectors form a basis for im(L).",
+      "difficulty": "medium"
+    },
+    {
+      "questionNumber": 5,
+      "question": "(a) Give a basis for ∧^2 V if {e1, e2, ..., en} is a basis for V. (b) Give the change of basis matrix for ∧^2 C^3 corresponding to the change of basis for C^3 between the bases {e1, e2, e3} and {f1, f2, f3} where f_i = Σ(j=1 to 3) p_ij e_j for i = 1, 2, 3. (c) Assume that 1 + 1 ≠ 0 in the field of scalars. Show that a multilinear map is alternating if and only if it is skew-symmetric.",
+      "solution": "(a) A basis for ∧^2 V is given by {e_i ∧ e_j : 1 ≤ i < j ≤ n}. (b) A basis for ∧^2 C^3 is {e1 ∧ e2, e1 ∧ e3, e2 ∧ e3}. Write f1 ∧ f2, f1 ∧ f3, and f2 ∧ f3 in terms of the basis {e1 ∧ e2, e1 ∧ e3, e2 ∧ e3}. The coefficients form the change of basis matrix. (c) A multilinear map f is alternating if f(x1, ..., xm) = 0 when x_i = x_j for some i ≠ j. It is skew-symmetric if swapping two arguments changes the sign. Show that alternating implies skew-symmetric and skew-symmetric implies alternating when 1 + 1 ≠ 0.",
+      "difficulty": "hard"
+    },
+    {
+      "questionNumber": 6,
+      "question": "Find all complex matrices X that are simultaneously diagonalizable with both A = [[0, 0, 1], [1, 0, 0], [0, 1, 0]] and B = [[1, 0, 0], [0, 0, 1], [0, 1, 0]].",
+      "solution": "For X to be simultaneously diagonalizable with A and B, it must commute with both. Write a general 3x3 matrix X and solve the equations AX = XA and BX = XB. The solution will be a set of matrices. Then show the found matrices are indeed simultaneously diagonalizable with A and B.",
+      "difficulty": "hard"
+    },
+    {
+      "questionNumber": 7,
+      "question": "Let l²(C) = {x = (xi)i=0 to infinity | xi ∈ C, Σ |xi|² < infinity} with inner product (x|y) = Σ x_i conjugate(y_i) and let L: l²(C) -> l²(C) be given by L(x)_i = (x_i)/2, for i ≥ 0. (a) Determine all eigenvalues and eigenvectors of L. (b) Use part (a) and the fundamental theorem of algebra to determine which polynomials p(x) ∈ C[x] satisfy that p(L) is injective.",
+      "solution": "(a)  To find eigenvalues λ and eigenvectors x, solve L(x) = λx. This yields x_i/2 = λx_i. If λ = 1/2, any vector x = (c, 0, 0, ...) works where c is a complex number. if λ ≠ 1/2, x_i = 0 for all i. Thus, the eigenvector must be the form x = (c, 0, 0, ...) corresponding to eigenvalue of 1/2. (b) p(L) is injective if and only if p(λ) ≠ 0 for all eigenvalues λ of L. Since the only eigenvalue is 1/2, p(L) is injective if and only if p(1/2) ≠ 0.",
+      "difficulty": "hard"
+    },
+    {
+      "questionNumber": 8,
+      "question": "Let V and W be complex inner product spaces and let L: V -> W be a linear map. Define a sesquilinear form on U = V ⊕ W as ((x1, y1), (x2, y2)) = (x1|x2) + (L(x1)|y2) + (y1|L(x2)) + (y1|y2) where the first term is computed with the inner product on V and the last three with the inner product on W. Show that this defines an inner product if and only if |L(x)| < |x| for all x ≠ 0 in V.",
+      "solution": "First, show that the defined form is sesquilinear, conjugate symmetric, and positive definite. Sesquilinearity follows from the linearity of L and the inner products. Conjugate symmetry follows from the conjugate symmetry of the inner products. For positive definiteness, we require that ((x, y), (x, y)) > 0 for all (x, y) ≠ (0, 0). This is equivalent to |x|^2 + |y|^2 + 2Re((L(x)|y)) > 0. Using Cauchy-Schwarz, show that this holds if and only if |L(x)| < |x| for all x.",
+      "difficulty": "hard"
+    },
+    {
+      "questionNumber": 9,
+      "question": "Determine for which pairs of complex matrices A and B of rank 1 the Moore-Penrose inverse satisfies (AB)† = B†A†. Note that the matrices do not need to be square, but the product AB needs to be defined.",
+      "solution": "Write A = σxy† and B = μzw† where |x| = |y| = |z| = |w| = 1, σ ≠ 0 and μ ≠ 0. Then AB = σμ(y†z)xw†, A† = (1/σ)yx†, and B† = (1/μ)zw†. Then (AB)† = (1/(σμ conjugate(y†z)))wz† and B†A† = (1/(σμ))zw†yx†. Therefore, (AB)† = B†A† if and only if z = y or (y|z) = 0.",
+      "difficulty": "hard"
+    },
+    {
+      "questionNumber": 10,
+      "question": "Let V be a finite-dimensional vector space. (a) Define what it means for a linear transformation T:V->V to be diagonalizable. (b) State a necessary and sufficient condition for T to be diagonalizable. (c) Prove that if T has n distinct eigenvalues, where n = dim(V), then T is diagonalizable.",
+      "solution": "(a) A linear transformation T is diagonalizable if there exists a basis for V consisting of eigenvectors of T. Equivalently, there exists an invertible matrix P such that P^{-1}TP is a diagonal matrix. (b) T is diagonalizable if and only if the sum of the dimensions of the eigenspaces of T equals the dimension of V, i.e., Σ dim(E_λ) = dim(V), where E_λ is the eigenspace corresponding to eigenvalue λ. (c) If T has n distinct eigenvalues, then each corresponding eigenvector is linearly independent. Since we have n linearly independent eigenvectors in an n-dimensional space, they form a basis. Thus, T is diagonalizable.",
+      "difficulty": "medium"
+    }
+  ],
+  "sourceExams": [
+    "SF1681 Losningar 250113.pdf"
+  ]
+}

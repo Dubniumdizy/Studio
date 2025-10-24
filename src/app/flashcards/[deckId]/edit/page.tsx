@@ -165,6 +165,7 @@ export default function EditFlashcardDeckPage() {
   const setDeckName = (name: string) => setDeck(d => d ? {...d, name} : null);
   const setSrsGoodInterval = (interval: number) => setDeck(d => d ? {...d, srsGoodInterval: interval} : null);
   const setSrsEasyInterval = (interval: number) => setDeck(d => d ? {...d, srsEasyInterval: interval} : null);
+  const setArchiveDays = (days: number) => setDeck(d => d ? {...d, archiveDays: days} : null);
 
   return (
     <div>
@@ -189,16 +190,23 @@ export default function EditFlashcardDeckPage() {
              </div>
              <div>
               <h3 className="text-sm font-medium mb-2">Spaced Repetition Settings</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="srsGood">"Good" interval (days)</Label>
-                  <Input id="srsGood" type="number" value={deck.srsGoodInterval} onChange={(e) => setSrsGoodInterval(Number(e.target.value))} />
+                  <Input id="srsGood" type="number" min="1" value={deck.srsGoodInterval} onChange={(e) => setSrsGoodInterval(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="srsEasy">"Easy" interval (days)</Label>
-                  <Input id="srsEasy" type="number" value={deck.srsEasyInterval} onChange={(e) => setSrsEasyInterval(Number(e.target.value))} />
+                  <Input id="srsEasy" type="number" min="1" value={deck.srsEasyInterval} onChange={(e) => setSrsEasyInterval(Number(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="archiveDays">Archive after (days)</Label>
+                  <Input id="archiveDays" type="number" min="1" value={deck.archiveDays} onChange={(e) => setArchiveDays(Number(e.target.value))} />
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Cards not reviewed for longer than the archive period will be moved to "Is this still relevant?"
+              </p>
              </div>
           </CardContent>
         </Card>

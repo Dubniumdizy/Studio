@@ -1,7 +1,10 @@
 
 "use client";
 
-import { getStudyBuddyRecommendations, StudyBuddyOutput } from "@/ai/flows/study-buddy-recommendations";
+import { getStudyBuddyRecommendations, type StudyBuddyOutput } from "@/ai/flows/study-buddy-recommendations";
+import Latex from 'react-latex-next'
+import 'katex/dist/katex.min.css'
+import { compressImageFileToDataUrl } from '@/lib/image-utils'
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Loader2, Sparkles, Target, Clock, Star, Download } from "lucide-react";
+import { Bot, Loader2, Sparkles } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
 
 const loadingMessages = [
-  "Analyzing your study goals and challenges...",
-  "Consulting my knowledge base for tailored advice...",
-  "Crafting personalized study techniques...",
-  "Structuring your plan for physical, intellectual, and emotional well-being...",
-  "Putting the finishing touches on your plan...",
+  "Scanning your problem...",
+  "Parsing math and notation...",
+  "Exploring solution paths...",
+  "Checking definitions and theorems...",
+  "Verifying steps and result...",
 ];
 
 export default function StudyBuddyPage() {
@@ -27,6 +30,7 @@ export default function StudyBuddyPage() {
   const { toast } = useToast();
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (isPending) {
@@ -64,16 +68,12 @@ export default function StudyBuddyPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const input = {
-      studyTopic: formData.get("studyTopic") as string,
-      studyGoals: formData.get("studyGoals") as string,
-      currentIssue: formData.get("currentIssue") as string,
-    };
+    const query = (formData.get("query") as string) || '';
 
-    if (!input.studyTopic || !input.studyGoals) {
+    if (!query.trim() && !imageFile) {
       toast({
-        title: "Missing Information",
-        description: "Please fill out topic and goals to get the best advice.",
+        title: "Provide a question or image",
+        description: "Type your question or attach an image with the problem.",
         variant: "destructive",
       });
       return;
@@ -81,55 +81,49 @@ export default function StudyBuddyPage() {
     
     setRecommendations(null);
     startTransition(async () => {
-      const result = await getStudyBuddyRecommendations(input);
+      let imageDataUri: string | undefined
+      if (imageFile) {
+        try {
+          imageDataUri = await compressImageFileToDataUrl(imageFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.85, mime: 'image/jpeg' })
+        } catch {
+          try {
+            imageDataUri = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(reader.result as string)
+              reader.onerror = (e) => reject(e)
+              reader.readAsDataURL(imageFile!)
+            })
+          } catch {}
+        }
+      }
+      const attempt = async (tries: number): Promise<StudyBuddyOutput | null> => {
+        try {
+          return await getStudyBuddyRecommendations({ query, imageDataUri });
+        } catch (e: any) {
+          const msg = (e?.message || '').toString()
+          if (tries > 0 && (/503|overloaded|Failed to fetch/i.test(msg))) {
+            await new Promise(r => setTimeout(r, 800))
+            return attempt(tries - 1)
+          }
+          return null
+        }
+      }
+      const result = await attempt(2)
       if (result) {
-        setRecommendations(result);
+        setRecommendations(result)
       } else {
-        toast({
-          title: "Error",
-          description: "Could not get recommendations. Please try again.",
-          variant: "destructive",
-        });
+        setRecommendations({ answer: 'The model is currently overloaded. Please retry shortly. Meanwhile, outline your approach: 1) Restate the problem. 2) Identify knowns/unknowns. 3) Choose a method (e.g., differentiate/integrate/row-reduce). 4) Execute carefully with units/assumptions. 5) Verify the result.' })
       }
     });
   };
   
-  const handleDownload = () => {
-    if (!recommendations) return;
-
-    const content = `AI Study Buddy Plan
-===================
-
-Study Techniques
-----------------
-${recommendations.studyTechniques}
-
-Time Management Strategies
---------------------------
-${recommendations.timeManagementStrategies}
-
-Additional Advice
------------------
-${recommendations.additionalAdvice.replace(/\*\*(.*?)\*\*/g, '$1')}
-    `;
-    
-    const blob = new Blob([content.trim()], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'study-plan.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
 
   return (
     <div>
       <PageHeader
-        title="AI Study Buddy"
-        description="Get personalized advice and recommendations to supercharge your studies."
+        title="Math/Study Buddy"
+        description="Ask a question and/or attach an image of the problem to get a step-by-step LaTeX solution."
       />
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -142,22 +136,18 @@ ${recommendations.additionalAdvice.replace(/\*\*(.*?)\*\*/g, '$1')}
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1">
-                  <Label htmlFor="studyTopic">Study Topic</Label>
-                  <Input id="studyTopic" name="studyTopic" placeholder="e.g., Quantum Physics" required/>
+                  <Label htmlFor="query">Your problem/question</Label>
+                  <Textarea id="query" name="query" placeholder="Describe the problem. Use $...$ or $$...$$ for math. You can also attach an image below." />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="studyGoals">Study Goals</Label>
-                  <Textarea id="studyGoals" name="studyGoals" placeholder="e.g., Pass my final exam, build a project" required/>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="currentIssue">What's your current struggle?</Label>
-                  <Textarea id="currentIssue" name="currentIssue" placeholder="e.g., I have ADHD and struggle with motivation, or I'm afraid of burning out..." />
+                  <Label htmlFor="questionImage">Optional: attach an image (problem/notes)</Label>
+                  <Input id="questionImage" name="questionImage" type="file" accept="image/*" onChange={(e)=> setImageFile(e.target.files?.[0] || null)} />
                 </div>
                 <Button type="submit" disabled={isPending} className="w-full">
                   {isPending ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Getting Advice...</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Solving...</>
                   ) : (
-                    <><Sparkles className="mr-2 h-4 w-4" /> Get Study Plan</>
+                    <><Sparkles className="mr-2 h-4 w-4" /> Solve</>
                   )}
                 </Button>
               </form>
@@ -180,39 +170,23 @@ ${recommendations.additionalAdvice.replace(/\*\*(.*?)\*\*/g, '$1')}
           {!isPending && !recommendations && (
             <Card className="flex flex-col items-center justify-center h-96 bg-muted/30 border-dashed">
                 <Bot className="h-16 w-16 text-muted-foreground"/>
-                <h3 className="mt-4 text-lg font-semibold">Ready for your personalized plan?</h3>
-                <p className="text-muted-foreground text-sm">Fill out the form to get started!</p>
+                <h3 className="mt-4 text-lg font-semibold">Ready to solve a problem?</h3>
+                <p className="text-muted-foreground text-sm">Describe it or attach an image, then press Solve.</p>
             </Card>
           )}
           {recommendations && (
             <Card>
               <CardHeader>
-                <CardTitle>Here's Your Personalized Study Plan!</CardTitle>
-                <CardDescription>Follow these suggestions to achieve your goals.</CardDescription>
+                <CardTitle>Solution</CardTitle>
+                <CardDescription>Step-by-step answer with LaTeX and prerequisites.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2"><Target className="text-primary"/>Study Techniques</h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{recommendations.studyTechniques}</p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2"><Clock className="text-primary"/>Time Management</h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{recommendations.timeManagementStrategies}</p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold flex items-center gap-2"><Star className="text-primary"/>Additional Advice</h4>
-                   <div 
-                     className="text-muted-foreground whitespace-pre-wrap"
-                     dangerouslySetInnerHTML={{ __html: recommendations.additionalAdvice.replace(/\*\*(.*?)\*\*/g, '<strong class="text-foreground/90">$1</strong>') }} 
-                   />
+                  <div className="text-muted-foreground whitespace-pre-wrap prose max-w-none">
+                    <Latex>{recommendations.answer}</Latex>
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter>
-                  <Button onClick={handleDownload} variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download as .txt
-                  </Button>
-              </CardFooter>
             </Card>
           )}
           </div>

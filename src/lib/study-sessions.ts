@@ -51,6 +51,8 @@ class StudySessionTracker {
   }
 
   private loadFromStorage() {
+    if (typeof window === 'undefined') return
+
     try {
       const savedSessions = localStorage.getItem('studySessions')
       const savedGoals = localStorage.getItem('studyGoals')
@@ -74,6 +76,8 @@ class StudySessionTracker {
   }
 
   private saveToStorage() {
+    if (typeof window === 'undefined') return
+
     try {
       localStorage.setItem('studySessions', JSON.stringify(this.sessions))
       localStorage.setItem('studyGoals', JSON.stringify(this.goals))

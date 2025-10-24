@@ -411,6 +411,7 @@ export async function saveResourcesJsonToBank(data: { recommendedResources: stri
   return await saveJsonToBank(`${t}.resources.json`, payload)
 }
 
+
 export async function saveElementAsPdfToBank(element: HTMLElement, title?: string) {
   const t = title || `Export - ${new Date().toLocaleDateString()}`
 

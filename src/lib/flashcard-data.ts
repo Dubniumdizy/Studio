@@ -8,6 +8,9 @@ export type Flashcard = {
   frontImageHint?: string;
   backImage?: string;
   backImageHint?: string;
+  lastReviewed: string | null;
+  nextReview: string | null;
+  difficulty: 'again' | 'good' | 'easy' | null;
 };
 
 export type Deck = {
@@ -19,6 +22,7 @@ export type Deck = {
   cards: Flashcard[];
   srsGoodInterval: number;
   srsEasyInterval: number;
+  archiveDays: number;
   lastStudied: string | null;
 };
 
@@ -49,13 +53,31 @@ export let mockFlashcardSystem: FileSystemItem[] = [
             front: "What is the powerhouse of the cell?", 
             back: "The Mitochondria.", 
             frontImage: "https://placehold.co/400x200.png", 
-            frontImageHint: "biology cell" 
+            frontImageHint: "biology cell",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
           },
-          { id: 'card-1-2', front: "What is DNA?", back: "Deoxyribonucleic acid, a self-replicating material present in nearly all living organisms as the main constituent of chromosomes." },
-          { id: 'card-1-3', front: "What is photosynthesis?", back: "The process by which green plants and some other organisms use sunlight to synthesize foods with the help of chlorophyll pigment." },
+          { 
+            id: 'card-1-2', 
+            front: "What is DNA?", 
+            back: "Deoxyribonucleic acid, a self-replicating material present in nearly all living organisms as the main constituent of chromosomes.",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
+          { 
+            id: 'card-1-3', 
+            front: "What is photosynthesis?", 
+            back: "The process by which green plants and some other organisms use sunlight to synthesize foods with the help of chlorophyll pigment.",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
         ],
         srsGoodInterval: 1,
         srsEasyInterval: 4,
+        archiveDays: 90,
         lastStudied: '2024-07-28T10:00:00.000Z',
       },
       {
@@ -65,13 +87,42 @@ export let mockFlashcardSystem: FileSystemItem[] = [
         description: 'Key formulas and theorems for introductory calculus.',
         subject: 'Mathematics',
         cards: [
-          { id: 'card-2-1', front: "What is the Power Rule for differentiation? $$\\frac{d}{dx}(x^n)$$", back: "$$nx^{n-1}$$" },
-          { id: 'card-2-2', front: "What is the formula for the area of a circle?", back: "$$A = \\pi r^2$$" },
-          { id: 'card-2-3', front: "What is the Fundamental Theorem of Calculus?", back: "If f is continuous on [a, b], then $\\int_a^b f(x) dx = F(b) - F(a)$, where F is any antiderivative of f." },
-          { id: 'card-2-4', front: "What is the derivative of $\\sin(x)$?", back: "$\\cos(x)$" },
+          { 
+            id: 'card-2-1', 
+            front: "What is the Power Rule for differentiation? $$\\frac{d}{dx}(x^n)$$", 
+            back: "$$nx^{n-1}$$",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
+          { 
+            id: 'card-2-2', 
+            front: "What is the formula for the area of a circle?", 
+            back: "$$A = \\pi r^2$$",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
+          { 
+            id: 'card-2-3', 
+            front: "What is the Fundamental Theorem of Calculus?", 
+            back: "If f is continuous on [a, b], then $\\int_a^b f(x) dx = F(b) - F(a)$, where F is any antiderivative of f.",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
+          { 
+            id: 'card-2-4', 
+            front: "What is the derivative of $\\sin(x)$?", 
+            back: "$\\cos(x)$",
+            lastReviewed: null,
+            nextReview: null,
+            difficulty: null,
+          },
         ],
         srsGoodInterval: 1,
         srsEasyInterval: 4,
+        archiveDays: 90,
         lastStudied: null,
       },
     ]
@@ -83,14 +134,50 @@ export let mockFlashcardSystem: FileSystemItem[] = [
     description: 'A deck to learn the capitals of countries around the world.',
     subject: 'Geography',
     cards: [
-      { id: 'card-3-1', front: "What is the capital of Japan?", back: "Tokyo" },
-      { id: 'card-3-2', front: "What is the capital of Canada?", back: "Ottawa" },
-      { id: 'card-3-3', front: "What is the capital of Australia?", back: "Canberra" },
-      { id: 'card-3-4', front: "What is the capital of Brazil?", back: "Brasília" },
-      { id: 'card-3-5', front: "What is the capital of Nigeria?", back: "Abuja" },
+      { 
+        id: 'card-3-1', 
+        front: "What is the capital of Japan?", 
+        back: "Tokyo",
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      },
+      { 
+        id: 'card-3-2', 
+        front: "What is the capital of Canada?", 
+        back: "Ottawa",
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      },
+      { 
+        id: 'card-3-3', 
+        front: "What is the capital of Australia?", 
+        back: "Canberra",
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      },
+      { 
+        id: 'card-3-4', 
+        front: "What is the capital of Brazil?", 
+        back: "Brasília",
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      },
+      { 
+        id: 'card-3-5', 
+        front: "What is the capital of Nigeria?", 
+        back: "Abuja",
+        lastReviewed: null,
+        nextReview: null,
+        difficulty: null,
+      },
     ],
     srsGoodInterval: 2,
     srsEasyInterval: 5,
+    archiveDays: 90,
     lastStudied: '2024-07-20T10:00:00.000Z',
   },
 ];

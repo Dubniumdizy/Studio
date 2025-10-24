@@ -19,7 +19,6 @@ const subjectTools = [
   { title: "Study Timer", href: "/study-timer", icon: Timer },
   { title: "Flashcards", href: "/flashcards", icon: Copy },
   { title: "Formula Sheet", href: "/formula-sheet", icon: FunctionSquare },
-  { title: "Question Bank", href: "/question-bank", icon: HelpCircle },
   { title: "Mock Exams", href: "/mock-exams", icon: ClipboardCheck },
   { title: "Study Buddy", href: "/study-buddy", icon: Bot },
 ];

@@ -83,24 +83,24 @@ function pearson(x: number[], y: number[]) {
   return den ? num / den : 0
 }
 function buildExampleCsv(): string {
-  const header = 'date,started_at,ended_at,user_id,subject,subject_id,duration_minutes,duration_seconds,energy_before,goal,exam_soon,reached_goal,happiness,energy_after,breaks,hardness,next_plan,forest_trees' + '\r\n'
+  const header = 'date,started_at,ended_at,user_id,subject,subject_id,duration_minutes,duration_seconds,energy_before,goal,goal_achievement,happiness,energy_after,used_solutions,hardness,next_plan,forest_trees' + '\r\n'
   const rows = [
-    // Week 1
-    ['2025-09-15','2025-09-15T07:30:00Z','2025-09-15T08:30:00Z','u1','math','s1',60,3600,3,'review LA','no','yes',4,4,'drink/eat; stretch',2,'chapter 5 ex',3],
-    ['2025-09-15','2025-09-15T16:00:00Z','2025-09-15T17:15:00Z','u1','physics','s2',75,4500,2,'hw set','no','no',3,3,'phone; social',4,'lab prep',2],
-    ['2025-09-16','2025-09-16T13:00:00Z','2025-09-16T14:00:00Z','u1','chemistry','s3',60,3600,2,'notes','no','yes',4,4,'drink/eat',2,'read notes',4],
-    ['2025-09-17','2025-09-17T20:00:00Z','2025-09-17T21:30:00Z','u1','math','s1',90,5400,3,'old exam','yes','yes',5,5,'study together',3,'next exam',5],
-    ['2025-09-18','2025-09-18T09:00:00Z','2025-09-18T09:45:00Z','u1','physics','s2',45,2700,4,'repetition','no','no',2,3,'phone; hobby',4,'focus again',2],
-    ['2025-09-19','2025-09-19T15:00:00Z','2025-09-19T16:30:00Z','u1','english','s4',90,5400,3,'essay','no','yes',4,4,'social',3,'revise draft',4],
-    ['2025-09-20','2025-09-20T10:30:00Z','2025-09-20T12:00:00Z','u1','biology','s5',90,5400,4,'lab prep','no','yes',4,5,'power nap; drink/eat',3,'microscope review',5],
+    // Week 1 - various goal achievements to show the analytics
+    ['2025-09-15','2025-09-15T07:30:00Z','2025-09-15T08:30:00Z','u1','math','s1',60,3600,3,'review LA',0.5,4,4,'no',2,'chapter 5 ex',3],
+    ['2025-09-15','2025-09-15T16:00:00Z','2025-09-15T17:15:00Z','u1','physics','s2',75,4500,2,'hw set',0,3,3,'yes',4,'lab prep',2],
+    ['2025-09-16','2025-09-16T13:00:00Z','2025-09-16T14:00:00Z','u1','chemistry','s3',60,3600,2,'notes',1,4,4,'no',2,'read notes',4],
+    ['2025-09-17','2025-09-17T20:00:00Z','2025-09-17T21:30:00Z','u1','math','s1',90,5400,3,'old exam',1,5,5,'yes',3,'next exam',5],
+    ['2025-09-18','2025-09-18T09:00:00Z','2025-09-18T09:45:00Z','u1','physics','s2',45,2700,4,'repetition',0,2,3,'no',4,'focus again',2],
+    ['2025-09-19','2025-09-19T15:00:00Z','2025-09-19T16:30:00Z','u1','english','s4',90,5400,3,'essay',0.5,4,4,'no',3,'revise draft',4],
+    ['2025-09-20','2025-09-20T10:30:00Z','2025-09-20T12:00:00Z','u1','biology','s5',90,5400,4,'lab prep',1,4,5,'yes',3,'microscope review',5],
     // Week 2
-    ['2025-09-22','2025-09-22T06:45:00Z','2025-09-22T07:30:00Z','u1','math','s1',45,2700,2,'morning warm-up','no','yes',3,4,'drink/eat',2,'quick recap',3],
-    ['2025-09-23','2025-09-23T18:00:00Z','2025-09-23T19:30:00Z','u1','physics','s2',90,5400,2,'problem set','no','no',2,3,'phone; power nap',4,'retry problems',2],
-    ['2025-09-24','2025-09-24T12:15:00Z','2025-09-24T13:15:00Z','u1','chemistry','s3',60,3600,3,'notes','no','yes',4,4,'study together',3,'summarize chapter',4],
-    ['2025-09-25','2025-09-25T20:30:00Z','2025-09-25T22:00:00Z','u1','math','s1',90,5400,3,'old exam','yes','yes',5,5,'drink/eat; social',3,'mock exam',6],
-    ['2025-09-26','2025-09-26T09:30:00Z','2025-09-26T10:15:00Z','u1','physics','s2',45,2700,4,'repetition','no','yes',3,4,'hobby',3,'lab notes',3],
-    ['2025-09-27','2025-09-27T14:00:00Z','2025-09-27T15:30:00Z','u1','english','s4',90,5400,2,'reading','no','yes',4,3,'artistic; social',2,'write review',3],
-    ['2025-09-28','2025-09-28T11:00:00Z','2025-09-28T12:30:00Z','u1','biology','s5',90,5400,3,'flashcards','no','yes',4,4,'drink/eat; study together',3,'next deck',4],
+    ['2025-09-22','2025-09-22T06:45:00Z','2025-09-22T07:30:00Z','u1','math','s1',45,2700,2,'morning warm-up',0.5,3,4,'no',2,'quick recap',3],
+    ['2025-09-23','2025-09-23T18:00:00Z','2025-09-23T19:30:00Z','u1','physics','s2',90,5400,2,'problem set',0,2,3,'yes',4,'retry problems',2],
+    ['2025-09-24','2025-09-24T12:15:00Z','2025-09-24T13:15:00Z','u1','chemistry','s3',60,3600,3,'notes',0.5,4,4,'no',3,'summarize chapter',4],
+    ['2025-09-25','2025-09-25T20:30:00Z','2025-09-25T22:00:00Z','u1','math','s1',90,5400,3,'old exam',1,5,5,'yes',3,'mock exam',6],
+    ['2025-09-26','2025-09-26T09:30:00Z','2025-09-26T10:15:00Z','u1','physics','s2',45,2700,4,'repetition',0.5,3,4,'no',3,'lab notes',3],
+    ['2025-09-27','2025-09-27T14:00:00Z','2025-09-27T15:30:00Z','u1','english','s4',90,5400,2,'reading',1,4,3,'no',2,'write review',3],
+    ['2025-09-28','2025-09-28T11:00:00Z','2025-09-28T12:30:00Z','u1','biology','s5',90,5400,3,'flashcards',0.5,4,4,'yes',3,'next deck',4],
   ]
   const esc = (v:any)=>{ const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s }
   return header + rows.map(r=> r.map(esc).join(',')).join('\r\n') + '\r\n'
@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
   // Trends controls
   const [selectedSubject, setSelectedSubject] = useState<string>('All')
   const [energyMetric, setEnergyMetric] = useState<'energy_before' | 'energy_after'>('energy_before')
-  const [calendarEvents, setCalendarEvents] = useState<{ start: Date; end?: Date; energyLevel?: number; tags?: string[]; workType?: string; moodAfter?: number; title?: string }[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<{ id?: string; start: Date; end?: Date; energyLevel?: number; tags?: string[]; workType?: string; moodAfter?: number; goalAchievement?: number; title?: string; description?: string; recurrence?: any }[]>([])
   const [subjectAvgs, setSubjectAvgs] = useState<{ subject: string; avgConfidence: number; avgImportance: number }[]>([])
   const [subjectVocabMap, setSubjectVocabMap] = useState<Record<string, { concept: string; confidence: number | null; importance: number | null }[]>>({})
   const [subjectNames, setSubjectNames] = useState<string[]>([])
@@ -139,6 +139,11 @@ export default function AnalyticsPage() {
   const [customEnd, setCustomEnd] = useState<string>(()=>{
     try { return localStorage.getItem('analytics_range_end') || '' } catch { return '' }
   })
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refreshCsvData = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   useEffect(()=>{
     if (useExample) { setCsvText(buildExampleCsv()); return }
@@ -150,7 +155,7 @@ export default function AnalyticsPage() {
       const file = home?.items?.find((it:any)=>it.type==='file' && it.name==='study_sessions.csv')
       setCsvText(file?.content || '')
     } catch { setCsvText('') }
-  }, [useExample])
+  }, [useExample, refreshKey])
   useEffect(()=>{
     // Load calendar events with energyLevel, tags, workType, moodAfter from localStorage
     try {
@@ -158,13 +163,17 @@ export default function AnalyticsPage() {
       if (!raw) { setCalendarEvents([]); return }
       const arr = JSON.parse(raw) as any[]
       const mapped = arr.map(ev=> ({ 
+                          id: ev.id,
                           start: new Date(ev.start), 
                           end: ev.end ? new Date(ev.end) : undefined,
                           energyLevel: ev.energyLevel ?? ev.energy_level ?? undefined,
                           tags: ev.tags || [],
                           workType: ev.workType || undefined,
                           moodAfter: ev.moodAfter ?? undefined,
+                          goalAchievement: ev.goalAchievement ?? undefined,
                           title: ev.title || undefined,
+                          description: ev.description || undefined,
+                          recurrence: ev.recurrence || undefined,
                         }))
                         .filter(e=> e.start instanceof Date && !isNaN(e.start.getTime()))
       setCalendarEvents(mapped)
@@ -518,10 +527,128 @@ export default function AnalyticsPage() {
   }, [rangeFilteredRows, rangeCalendarEvents])
   const goalRateOverTime = useMemo(()=>{
     const { start, end } = activeRange
-    const byDate: Record<string,{yes:number,no:number}> = {}
-    rangeFilteredRows.forEach(r=>{ const d=new Date(r.ended_at||r.date); if(isNaN(d.getTime())|| d<start || d>end) return; const key=d.toISOString().slice(0,10); const ok=(r.reached_goal||'').toLowerCase().startsWith('y'); byDate[key]=byDate[key]||{yes:0,no:0}; byDate[key][ok?'yes':'no']++ })
-    return Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b)).map(([date,val])=>({ date, rate: val.yes/(val.yes+val.no||1) }))
-  }, [rangeFilteredRows, activeRange])
+    const byDate: Record<string,{less:number,exact:number,more:number}> = {}
+    
+    // From CSV data - use new goal_achievement field
+    rangeFilteredRows.forEach(r=>{ 
+      const d=new Date(r.ended_at||r.date); 
+      if(isNaN(d.getTime())|| d<start || d>end) return; 
+      const key=d.toISOString().slice(0,10); 
+      if(!byDate[key]) byDate[key] = {less:0,exact:0,more:0}
+      
+      if (r.goal_achievement === 0 || r.goal_achievement === '0') byDate[key].less++
+      else if (r.goal_achievement === 0.5 || r.goal_achievement === '0.5') byDate[key].exact++
+      else if (r.goal_achievement === 1 || r.goal_achievement === '1') byDate[key].more++
+      // Fallback to old reached_goal format if goal_achievement not available
+      else if (r.reached_goal) {
+        const ok = (r.reached_goal||'').toLowerCase().startsWith('y')
+        if (ok) byDate[key].exact++
+        else byDate[key].less++
+      }
+    })
+    
+    // From calendar events
+    rangeCalendarEvents.forEach(e=>{
+      const key = e.start.toISOString().slice(0,10)
+      if(!byDate[key]) byDate[key] = {less:0,exact:0,more:0}
+      
+      if (typeof e.goalAchievement === 'number') {
+        if (e.goalAchievement === 0) byDate[key].less++
+        else if (e.goalAchievement === 0.5) byDate[key].exact++
+        else if (e.goalAchievement === 1) byDate[key].more++
+      }
+    })
+    
+    return Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b)).map(([date,val])=>({ 
+      date, 
+      less: val.less,
+      exact: val.exact,
+      more: val.more,
+      total: val.less + val.exact + val.more,
+      successRate: val.total > 0 ? (val.exact + val.more) / val.total : 0 // exact + more = success
+    }))
+  }, [rangeFilteredRows, rangeCalendarEvents, activeRange])
+
+  // Study Session Duration Over Time (from calendar events tagged with 'study')
+  const studySessionDurations = useMemo(() => {
+    const { start, end } = activeRange
+    const studySessions: { date: string; duration: number; title: string }[] = []
+    
+    rangeCalendarEvents.forEach(e => {
+      const tagsLower = (e.tags || []).map(t => String(t).toLowerCase())
+      if (!tagsLower.includes('study')) return
+      
+      const endTime = e.end instanceof Date ? e.end : null
+      if (!endTime) return
+      
+      const durationMinutes = (endTime.getTime() - e.start.getTime()) / 60000
+      if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return
+      
+      studySessions.push({
+        date: e.start.toISOString().slice(0, 10),
+        duration: Math.round(durationMinutes),
+        title: e.title || 'Study Session'
+      })
+    })
+    
+    // Group by date and sum durations
+    const byDate: Record<string, { totalMinutes: number; sessionCount: number; sessions: string[] }> = {}
+    studySessions.forEach(session => {
+      if (!byDate[session.date]) {
+        byDate[session.date] = { totalMinutes: 0, sessionCount: 0, sessions: [] }
+      }
+      byDate[session.date].totalMinutes += session.duration
+      byDate[session.date].sessionCount += 1
+      byDate[session.date].sessions.push(session.title)
+    })
+    
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => ({
+        date,
+        totalHours: Number((data.totalMinutes / 60).toFixed(2)),
+        totalMinutes: data.totalMinutes,
+        sessionCount: data.sessionCount,
+        averageSessionLength: Math.round(data.totalMinutes / data.sessionCount),
+        sessions: data.sessions
+      }))
+  }, [rangeCalendarEvents, activeRange])
+
+  // Goal Achievement Analytics: Track if goals are too big/good/small
+  const goalAchievementStats = useMemo(() => {
+    const { start, end } = activeRange
+    let lessCount = 0, exactCount = 0, moreCount = 0
+    
+    // From study timer CSV data
+    rangeFilteredRows.forEach(r => {
+      const d = new Date(r.ended_at || r.date)
+      if (isNaN(d.getTime()) || d < start || d > end) return
+      
+      if (r.goal_achievement === 0 || r.goal_achievement === '0') lessCount++
+      else if (r.goal_achievement === 0.5 || r.goal_achievement === '0.5') exactCount++
+      else if (r.goal_achievement === 1 || r.goal_achievement === '1') moreCount++
+    })
+    
+    // From calendar events
+    rangeCalendarEvents.forEach(e => {
+      if (typeof e.goalAchievement === 'number') {
+        if (e.goalAchievement === 0) lessCount++
+        else if (e.goalAchievement === 0.5) exactCount++
+        else if (e.goalAchievement === 1) moreCount++
+      }
+    })
+    
+    const total = lessCount + exactCount + moreCount
+    if (total === 0) return null
+    
+    return {
+      less: { count: lessCount, percentage: Math.round((lessCount / total) * 100) },
+      exact: { count: exactCount, percentage: Math.round((exactCount / total) * 100) },
+      more: { count: moreCount, percentage: Math.round((moreCount / total) * 100) },
+      total,
+      averageAchievement: Number(((lessCount * 0 + exactCount * 0.5 + moreCount * 1) / total).toFixed(2))
+    }
+  }, [rangeFilteredRows, rangeCalendarEvents, activeRange])
 
   // Long-term happiness over time (from earliest data to today, excluding future)
   const happinessOverTime = useMemo(()=>{
@@ -834,6 +961,64 @@ export default function AnalyticsPage() {
     return 'text-red-600'
   }
 
+  // Diary throwbacks: yesterday, last week, last month, last year
+  const diaryThrowbacks = useMemo(() => {
+    const now = new Date()
+    const mk = (days: number) => { const d = new Date(now); d.setDate(d.getDate() - days); d.setHours(0,0,0,0); return d }
+    const targets = [
+      { key: 'yesterday', label: 'Yesterday', date: mk(1) },
+      { key: 'week', label: 'One week ago', date: mk(7) },
+      { key: 'month', label: 'One month ago', date: mk(30) },
+      { key: 'year', label: 'One year ago', date: mk(365) },
+    ] as const
+
+    const sameDay = (a: Date, b: Date) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate()
+
+    const diaryEvents = calendarEvents.filter(e => {
+      const t = String(e.title||'').toLowerCase()
+      const tagsLower = (e.tags||[]).map(x=>String(x).toLowerCase())
+      return t === 'diary' || tagsLower.includes('diary')
+    })
+
+    const findFor = (target: Date): { when: string, text: string|null } => {
+      // Prefer explicit instance on that day
+      const instance = diaryEvents
+        .filter(e => e.start && sameDay(e.start, target))
+        .sort((a,b)=> (a.start.getTime() - b.start.getTime()))[0]
+      if (instance) {
+        const txt = (instance.description || '').trim() || null
+        const when = instance.start.toLocaleString()
+        return { when, text: txt }
+      }
+      // Fallback: see if there is a daily recurring diary covering that date
+      for (const e of diaryEvents) {
+        const rec = e.recurrence
+        if (!rec || rec.type !== 'daily') continue
+        const start0 = new Date(e.start)
+        start0.setHours(0,0,0,0)
+        const endDate = rec.endDate ? new Date(rec.endDate) : null
+        if (target < start0) continue
+        if (endDate && target > new Date(new Date(endDate).setHours(23,59,59,999))) continue
+        // Optional skipDates support
+        const skips: string[] = Array.isArray(rec.skipDates) ? rec.skipDates.map((s:any)=> new Date(s).toISOString().slice(0,10)) : []
+        const key = target.toISOString().slice(0,10)
+        if (skips.includes(key)) continue
+        // Use the base description (prompt)
+        const when = `${key} ${String(new Date(e.start).getHours()).padStart(2,'0')}:${String(new Date(e.start).getMinutes()).padStart(2,'0')}`
+        const txt = (e.description || '').trim() || null
+        return { when, text: txt }
+      }
+      return { when: target.toDateString(), text: null }
+    }
+
+    const map: Record<string, { label: string, when: string, text: string|null }> = {}
+    targets.forEach(t => {
+      const res = findFor(t.date)
+      map[t.key] = { label: t.label, when: res.when, text: res.text }
+    })
+    return map
+  }, [calendarEvents])
+
 
   if (loading) {
     return (
@@ -877,6 +1062,9 @@ export default function AnalyticsPage() {
           Study Analytics
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={refreshCsvData} className="bg-blue-50 border-blue-200 text-blue-700">
+            🔄 Refresh Data
+          </Button>
           <Button variant={useExample ? 'default' : 'outline'} onClick={()=>setUseExample(v=>!v)} className="bg-green-50 border-green-200 text-green-700">
             {useExample ? 'Remove Example Data' : 'Use Example Data'}
           </Button>
@@ -944,6 +1132,25 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Diary throwbacks */}
+          <Card className="bg-gradient-to-br from-rose-50 to-pink-50 border-rose-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-rose-700">Diary throwbacks</CardTitle>
+              <CardDescription className="text-xs">What you wrote around these dates</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(['yesterday','week','month','year'] as const).map(key => (
+                <div key={key} className="p-3 rounded border bg-white/50">
+                  <div className="text-xs font-medium text-rose-700">{diaryThrowbacks[key].label}</div>
+                  <div className="text-[11px] text-muted-foreground">{diaryThrowbacks[key].when}</div>
+                  <div className="mt-1 text-sm whitespace-pre-wrap">
+                    {diaryThrowbacks[key].text || <span className="text-muted-foreground">No diary entry found.</span>}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="subjects" className="space-y-6">
@@ -1183,20 +1390,222 @@ export default function AnalyticsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Reached goal (rate) over time ({rangeLabel})</CardTitle>
+                  <CardTitle>Goal Achievement over time ({rangeLabel})</CardTitle>
+                  <CardDescription>Shows if goals were too hard (less), just right (exact), or too easy (more)</CardDescription>
                 </CardHeader>
                 <CardContent className="h-64">
                   <ResponsiveContainer>
                     <RLineChart data={goalRateOverTime}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
-                      <YAxis domain={[0,1]} />
+                      <YAxis />
                       <RTooltip/>
-                      <Line type="monotone" dataKey="rate" stroke="#10b981" />
+                      <Legend/>
+                      <Line type="monotone" dataKey="less" stroke="#dc2626" name="Too Hard (Less)" />
+                      <Line type="monotone" dataKey="exact" stroke="#16a34a" name="Just Right (Exact)" />
+                      <Line type="monotone" dataKey="more" stroke="#2563eb" name="Too Easy (More)" />
                     </RLineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
+
+              {/* Study Session Duration Over Time */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Study Session Duration Over Time ({rangeLabel})</CardTitle>
+                  <CardDescription>Daily totals of study sessions tagged with "study" from calendar events</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {studySessionDurations.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No study sessions found in this time range.</div>
+                  ) : (
+                    <>
+                      <div className="h-80 mb-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RBarChart data={studySessionDurations}>
+                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                            <XAxis 
+                              dataKey="date" 
+                              tick={{ fontSize: 12 }}
+                              tickFormatter={(value) => {
+                                const date = new Date(value)
+                                return `${date.getMonth() + 1}/${date.getDate()}`
+                              }}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 12 }}
+                              label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
+                            />
+                            <RTooltip 
+                              formatter={([value, name]) => {
+                                if (name === 'totalHours') {
+                                  return [`${value} hours`, 'Study Time']
+                                }
+                                return [value, name]
+                              }}
+                              labelFormatter={(value) => {
+                                const date = new Date(value)
+                                return date.toLocaleDateString()
+                              }}
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload || !payload.length) return null
+                                const data = payload[0].payload
+                                return (
+                                  <div className="bg-background p-3 border rounded-lg shadow-lg">
+                                    <p className="font-medium">{new Date(label).toLocaleDateString()}</p>
+                                    <p>Study Time: <span className="font-semibold text-primary">{data.totalHours} hours</span></p>
+                                    <p>Sessions: <span className="font-semibold text-blue-600">{data.sessionCount}</span></p>
+                                    <p>Avg Length: <span className="font-semibold text-orange-600">{data.averageSessionLength} min</span></p>
+                                    {data.sessions && data.sessions.length > 0 && (
+                                      <div className="mt-2">
+                                        <p className="text-sm font-medium">Sessions:</p>
+                                        {data.sessions.slice(0, 3).map((session, idx) => (
+                                          <p key={idx} className="text-xs text-muted-foreground truncate">
+                                            • {session}
+                                          </p>
+                                        ))}
+                                        {data.sessions.length > 3 && (
+                                          <p className="text-xs text-muted-foreground">+{data.sessions.length - 3} more</p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              }}
+                            />
+                            <Bar 
+                              dataKey="totalHours" 
+                              fill="hsl(var(--primary))" 
+                              radius={[4, 4, 0, 0]}
+                              opacity={0.8}
+                              name="Study Hours"
+                            />
+                          </RBarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-primary">
+                            {studySessionDurations.reduce((acc, d) => acc + d.totalHours, 0).toFixed(1)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Total Hours</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {studySessionDurations.reduce((acc, d) => acc + d.sessionCount, 0)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Total Sessions</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-green-600">
+                            {studySessionDurations.length > 0 ? 
+                              (studySessionDurations.reduce((acc, d) => acc + d.totalHours, 0) / studySessionDurations.length).toFixed(1) : '0.0'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Avg Hours/Day</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-orange-600">
+                            {studySessionDurations.length > 0 ?
+                              Math.round(studySessionDurations.reduce((acc, d) => acc + d.averageSessionLength, 0) / studySessionDurations.length) : 0}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Avg Session (min)</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Goal Achievement Analysis */}
+              {goalAchievementStats && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Goal Setting Analysis ({rangeLabel})</CardTitle>
+                    <CardDescription>Shows if your goals are too easy (more), just right (exact), or too hard (less)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-red-600">Too Hard (Less than goal)</span>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-red-600">{goalAchievementStats.less.count}</div>
+                            <div className="text-xs text-muted-foreground">{goalAchievementStats.less.percentage}%</div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-green-600">Just Right (Exact goal)</span>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-green-600">{goalAchievementStats.exact.count}</div>
+                            <div className="text-xs text-muted-foreground">{goalAchievementStats.exact.percentage}%</div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-blue-600">Too Easy (More than goal)</span>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-blue-600">{goalAchievementStats.more.count}</div>
+                            <div className="text-xs text-muted-foreground">{goalAchievementStats.more.percentage}%</div>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Average Achievement</span>
+                            <span className="text-lg font-bold">{goalAchievementStats.averageAchievement}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            0 = always less, 0.5 = perfect, 1 = always more
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-48">
+                        <ResponsiveContainer>
+                          <RPieChart>
+                            <Pie 
+                              data={[
+                                { name: 'Too Hard', value: goalAchievementStats.less.count, fill: '#dc2626' },
+                                { name: 'Just Right', value: goalAchievementStats.exact.count, fill: '#16a34a' },
+                                { name: 'Too Easy', value: goalAchievementStats.more.count, fill: '#2563eb' }
+                              ]} 
+                              dataKey="value" 
+                              nameKey="name" 
+                              innerRadius={50} 
+                              outerRadius={80}
+                            />
+                            <RTooltip formatter={(v:any,n:any)=> [`${v} sessions`, n]} />
+                            <Legend/>
+                          </RPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    {goalAchievementStats.averageAchievement < 0.4 && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <div className="text-sm font-medium text-red-800">⚠️ Goal Setting Tip</div>
+                        <div className="text-sm text-red-700 mt-1">
+                          Your goals might be too ambitious. Consider setting smaller, more achievable goals to build momentum.
+                        </div>
+                      </div>
+                    )}
+                    {goalAchievementStats.averageAchievement > 0.7 && (
+                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="text-sm font-medium text-blue-800">🎯 Goal Setting Tip</div>
+                        <div className="text-sm text-blue-700 mt-1">
+                          You're consistently exceeding your goals! Consider setting more challenging goals to maximize your growth.
+                        </div>
+                      </div>
+                    )}
+                    {goalAchievementStats.averageAchievement >= 0.4 && goalAchievementStats.averageAchievement <= 0.7 && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <div className="text-sm font-medium text-green-800">✅ Goal Setting Tip</div>
+                        <div className="text-sm text-green-700 mt-1">
+                          Great balance! Your goals are challenging but achievable. Keep it up!
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Activity categories time pie */}
               <Card className="lg:col-span-2">

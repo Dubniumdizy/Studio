@@ -83,6 +83,10 @@ interface StudySettings {
   }
 }
 
+interface SidebarVisibility {
+  [key: string]: boolean
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState('3-months');
@@ -117,6 +121,24 @@ export default function SettingsPage() {
     }
   })
 
+  const [sidebarVisibility, setSidebarVisibility] = useState<SidebarVisibility>({
+    'dashboard': true,
+    'calendar': true,
+    'goals': true,
+    'analytics': true,
+    'subject-setup': true,
+    'inspiration': true,
+    'resources': true,
+    'study-timer': true,
+    'flashcards': true,
+    'bank': true,
+    'book-analyzer': true,
+    'formula-sheet': true,
+    'mock-exams': true,
+    'exam-analyzer': true,
+    'study-buddy': true,
+  })
+
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
@@ -129,6 +151,7 @@ export default function SettingsPage() {
     try {
       const savedNotificationSettings = localStorage.getItem('notificationSettings')
       const savedStudySettings = localStorage.getItem('studySettings')
+      const savedSidebarVisibility = localStorage.getItem('sidebarVisibility')
       
       if (savedNotificationSettings) {
         setNotificationSettings(JSON.parse(savedNotificationSettings))
@@ -136,6 +159,10 @@ export default function SettingsPage() {
       
       if (savedStudySettings) {
         setStudySettings(JSON.parse(savedStudySettings))
+      }
+
+      if (savedSidebarVisibility) {
+        setSidebarVisibility(JSON.parse(savedSidebarVisibility))
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -148,6 +175,10 @@ export default function SettingsPage() {
     try {
       localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings))
       localStorage.setItem('studySettings', JSON.stringify(studySettings))
+      localStorage.setItem('sidebarVisibility', JSON.stringify(sidebarVisibility))
+      
+      // Trigger custom event to update sidebar immediately
+      window.dispatchEvent(new Event('sidebarVisibilityUpdated'))
       
       // Request notification permission if needed
       if (notificationSettings.browserNotifications && notificationPermission === 'default') {
@@ -329,11 +360,9 @@ export default function SettingsPage() {
       </Card>
 
       <Tabs defaultValue="notifications" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 bg-green-50">
+        <TabsList className="grid w-full grid-cols-2 bg-green-50">
           <TabsTrigger value="notifications" className="data-[state=active]:bg-green-200">Notifications</TabsTrigger>
-          <TabsTrigger value="study" className="data-[state=active]:bg-green-200">Study</TabsTrigger>
-          <TabsTrigger value="data" className="data-[state=active]:bg-green-200">Data</TabsTrigger>
-          <TabsTrigger value="about" className="data-[state=active]:bg-green-200">About</TabsTrigger>
+          <TabsTrigger value="interface" className="data-[state=active]:bg-green-200">Interface</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notifications" className="space-y-6">
@@ -545,261 +574,78 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="study" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Timer Settings */}
-            <Card className="border-2 border-green-200">
-              <CardHeader>
-                <CardTitle className="text-green-800">Timer Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="session-length">Default Session Length (minutes)</Label>
-                  <Input
-                    id="session-length"
-                    type="number"
-                    value={studySettings.defaultSessionLength}
-                    onChange={(e) => 
-                      setStudySettings(prev => ({ ...prev, defaultSessionLength: parseInt(e.target.value) }))
-                    }
-                    min="5"
-                    max="120"
-                    className="border-green-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="break-length">Default Break Length (minutes)</Label>
-                  <Input
-                    id="break-length"
-                    type="number"
-                    value={studySettings.defaultBreakLength}
-                    onChange={(e) => 
-                      setStudySettings(prev => ({ ...prev, defaultBreakLength: parseInt(e.target.value) }))
-                    }
-                    min="1"
-                    max="30"
-                    className="border-green-200"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="auto-breaks">Auto-start Breaks</Label>
-                  <Switch
-                    id="auto-breaks"
-                    checked={studySettings.autoStartBreaks}
-                    onCheckedChange={(checked) => 
-                      setStudySettings(prev => ({ ...prev, autoStartBreaks: checked }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sound-enabled">Sound Effects</Label>
-                  <Switch
-                    id="sound-enabled"
-                    checked={studySettings.soundEnabled}
-                    onCheckedChange={(checked) => 
-                      setStudySettings(prev => ({ ...prev, soundEnabled: checked }))
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Tracking Settings */}
-            <Card className="border-2 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-blue-800">Tracking Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="energy-tracking">Energy Level Tracking</Label>
-                  <Switch
-                    id="energy-tracking"
-                    checked={studySettings.energyTracking}
-                    onCheckedChange={(checked) => 
-                      setStudySettings(prev => ({ ...prev, energyTracking: checked }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="productivity-tracking">Productivity Tracking</Label>
-                  <Switch
-                    id="productivity-tracking"
-                    checked={studySettings.productivityTracking}
-                    onCheckedChange={(checked) => 
-                      setStudySettings(prev => ({ ...prev, productivityTracking: checked }))
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Study Goals */}
-            <Card className="border-2 border-purple-200">
-              <CardHeader>
-                <CardTitle className="text-purple-800">Study Goals</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="daily-hours">Daily Study Hours</Label>
-                  <Input
-                    id="daily-hours"
-                    type="number"
-                    value={studySettings.studyGoals.dailyHours}
-                    onChange={(e) => 
-                      setStudySettings(prev => ({ 
-                        ...prev, 
-                        studyGoals: { ...prev.studyGoals, dailyHours: parseFloat(e.target.value) }
-                      }))
-                    }
-                    min="0.5"
-                    max="12"
-                    step="0.5"
-                    className="border-purple-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weekly-hours">Weekly Study Hours</Label>
-                  <Input
-                    id="weekly-hours"
-                    type="number"
-                    value={studySettings.studyGoals.weeklyHours}
-                    onChange={(e) => 
-                      setStudySettings(prev => ({ 
-                        ...prev, 
-                        studyGoals: { ...prev.studyGoals, weeklyHours: parseFloat(e.target.value) }
-                      }))
-                    }
-                    min="1"
-                    max="84"
-                    step="0.5"
-                    className="border-purple-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="monthly-hours">Monthly Study Hours</Label>
-                  <Input
-                    id="monthly-hours"
-                    type="number"
-                    value={studySettings.studyGoals.monthlyHours}
-                    onChange={(e) => 
-                      setStudySettings(prev => ({ 
-                        ...prev, 
-                        studyGoals: { ...prev.studyGoals, monthlyHours: parseFloat(e.target.value) }
-                      }))
-                    }
-                    min="1"
-                    max="360"
-                    step="0.5"
-                    className="border-purple-200"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="data" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Data Export */}
-            <Card className="border-2 border-green-200">
-              <CardHeader>
-                <CardTitle className="text-green-800">Export Data</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Export all your study data, including sessions, goals, and analytics.
-                </p>
-                <Button onClick={exportData} className="w-full bg-green-600 hover:bg-green-700">
-                  Export Data
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Data Import */}
-            <Card className="border-2 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-blue-800">Import Data</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Import study data from a previously exported file.
-                </p>
-                <Input
-                  type="file"
-                  accept=".json"
-                  onChange={importData}
-                  className="border-blue-200"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Data Reset */}
-            <Card className="border-2 border-red-200">
-              <CardHeader>
-                <CardTitle className="text-red-800">Reset Data</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Warning: This will permanently delete all your study data.
-                </p>
-                <Button 
-                  onClick={resetData} 
-                  variant="destructive" 
-                  className="w-full"
-                >
-                  Reset All Data
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="about" className="space-y-6">
+        <TabsContent value="interface" className="space-y-6">
           <Card className="border-2 border-green-200">
             <CardHeader>
-              <CardTitle className="text-green-800">About Studyverse Garden</CardTitle>
+              <CardTitle className="text-green-800">Sidebar Navigation</CardTitle>
+              <CardDescription>Choose which pages appear in your left sidebar</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-green-800">Version</h3>
-                <p className="text-sm text-gray-600">1.0.0</p>
+              <p className="text-sm text-gray-600 mb-4">
+                Toggle pages on/off to show or hide them from your sidebar. Changes take effect after saving.
+              </p>
+              <div className="space-y-3">
+                {[
+                  { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+                  { id: 'calendar', label: 'Calendar', icon: '📅', section: 'Planning' },
+                  { id: 'goals', label: 'Goals', icon: '🎯', section: 'Planning' },
+                  { id: 'analytics', label: 'Analytics', icon: '📊', section: 'Planning' },
+                  { id: 'subject-setup', label: 'Subject Setup', icon: '📚', section: 'Pre Study' },
+                  { id: 'inspiration', label: 'Inspiration', icon: '💡', section: 'Pre Study' },
+                  { id: 'resources', label: 'Resources', icon: '📋', section: 'Pre Study' },
+                  { id: 'study-timer', label: 'Study Timer', icon: '⏱️', section: 'Deep Study' },
+                  { id: 'flashcards', label: 'Flashcards', icon: '🃏', section: 'Deep Study' },
+                  { id: 'bank', label: 'Bank', icon: '🏦', section: 'Deep Study' },
+                  { id: 'book-analyzer', label: 'Book Analyzer', icon: '📖', section: 'Deep Study' },
+                  { id: 'formula-sheet', label: 'Formula Sheet', icon: '🧮', section: 'Exam Prep' },
+                  { id: 'mock-exams', label: 'Mock Exams', icon: '📋', section: 'Exam Prep' },
+                  { id: 'exam-analyzer', label: 'Exam Analyzer', icon: '🔍', section: 'Exam Prep' },
+                  { id: 'study-buddy', label: 'Study Buddy', icon: '🤖', section: 'Help' },
+                ].map((page) => (
+                  <div key={page.id} className="flex items-center justify-between p-3 rounded-lg border border-green-200 hover:bg-green-50">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-2xl">{page.icon}</span>
+                      <div>
+                        <span className="font-medium text-gray-700">{page.label}</span>
+                        {page.section && <span className="text-xs text-gray-500 ml-2">({page.section})</span>}
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={sidebarVisibility[page.id] ?? true}
+                      onCheckedChange={(checked) => 
+                        setSidebarVisibility(prev => ({ ...prev, [page.id]: checked }))
+                      }
+                    />
+                  </div>
+                ))}
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-2">
-                <h3 className="font-semibold text-green-800">Description</h3>
-                <p className="text-sm text-gray-600">
-                  Studyverse Garden is a comprehensive study app designed with a cottage core aesthetic. 
-                  It combines modern productivity tools with a calming, nature-inspired interface to help 
-                  students achieve their academic goals while maintaining well-being.
-                </p>
+          <Card className="border-2 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-blue-800">Hidden Pages</CardTitle>
+              <CardDescription>These pages are hidden from the sidebar but can be accessed directly</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {[
+                  { id: 'settings', label: 'Settings', icon: '⚙️' },
+                  { id: 'subject-setup', label: 'Subject Setup', icon: '📋' },
+                  { id: 'checkout', label: 'Checkout', icon: '💳' },
+                ].map((page) => (
+                  <div key={page.id} className="flex items-center justify-between p-3 rounded-lg border border-blue-200 bg-blue-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{page.icon}</span>
+                      <span className="font-medium text-gray-700">{page.label}</span>
+                    </div>
+                    <Badge variant="outline" className="bg-blue-100 border-blue-300 text-blue-700">Hidden</Badge>
+                  </div>
+                ))}
               </div>
-
-              <div className="space-y-2">
-                <h3 className="font-semibold text-green-800">Features</h3>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Resizable, movable dashboard widgets</li>
-                  <li>• Enhanced calendar with energy tracking</li>
-                  <li>• AI-powered study companion</li>
-                  <li>• Comprehensive analytics and insights</li>
-                  <li>• Real-time notifications</li>
-                  <li>• Study timer with productivity tracking</li>
-                  <li>• Goal setting and progress tracking</li>
-                  <li>• Data export and import</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-semibold text-green-800">Contact</h3>
-                <p className="text-sm text-gray-600">
-                  For support or feedback, please visit our documentation or contact us.
-                </p>
-              </div>
+              <p className="text-sm text-gray-600 italic">
+                Hidden pages don't appear in the sidebar to keep your navigation clean, but you can still access them via direct links or buttons.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>

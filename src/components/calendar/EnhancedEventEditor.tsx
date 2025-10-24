@@ -387,6 +387,7 @@ export function EnhancedEventEditor({
       energyLevel: energyLevel,
       studyDifficulty: studyDifficulty,
       moodAfter: happiness,
+      goalAchievement: (formData as any).goalAchievement ?? undefined,
       pictures: pictures,
       files: formData.files || [],
     }
@@ -877,6 +878,28 @@ export function EnhancedEventEditor({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">Your overall happiness after this activity.</p>
+              </div>
+
+              {/* Goal Achievement */}
+              <div className="space-y-2">
+                <Label>Goal Achievement (if applicable)</Label>
+                <div className="flex items-center gap-2">
+                  {[{val: 0, label: 'Less'}, {val: 0.5, label: 'Exact'}, {val: 1, label: 'More'}].map(({val, label}) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, goalAchievement: val }))}
+                      className={cn(
+                        "px-3 py-1 rounded-md border-2 transition-all duration-200 hover-gentle text-xs font-medium",
+                        (formData as any).goalAchievement === val ? "border-primary bg-primary/10 text-primary" : "border-muted-foreground/30",
+                        "hover:bg-muted"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Did you achieve less, exactly, or more than your goal?</p>
               </div>
 
               {/* Deadline Control - one-way set to black/white */}

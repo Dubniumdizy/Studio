@@ -29,6 +29,7 @@ export interface EnhancedCalendarEvent {
   workType?: 'deep' | 'shallow' | 'break' | 'personal'  // Type of work
   moodBefore?: 1 | 2 | 3 | 4 | 5    // Mood before activity
   moodAfter?: 1 | 2 | 3 | 4 | 5     // Mood after activity
+  goalAchievement?: 0 | 0.5 | 1     // Goal achievement: 0=less, 0.5=exact, 1=more
   productivity?: 1 | 2 | 3 | 4 | 5  // Productivity rating
   savedAsFile?: boolean             // If event is saved as file in BANK
   isRecurring?: boolean             // Whether this is a recurring event

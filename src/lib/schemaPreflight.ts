@@ -37,7 +37,7 @@ export async function runSchemaPreflight(): Promise<SchemaIssue[]> {
   const check = (table: string, column: string) =>
     columnExists(table, column).then(exists => ({ table, column, exists }))
 
-  // Only check columns that can block saving subjects/goals.
+  // Only check columns that can block saving subjects/goals/calendar events.
   checks.push(
     // Subjects
     check('subjects', 'user_id'),
@@ -52,7 +52,15 @@ export async function runSchemaPreflight(): Promise<SchemaIssue[]> {
     check('goals', 'unit'),
     check('goals', 'completed'),
     check('goals', 'due_date'),
-    check('goals', 'reminder_days')
+    check('goals', 'reminder_days'),
+    // Calendar events (critical fields for analytics)
+    check('calendar_events', 'user_id'),
+    check('calendar_events', 'energy_level'),
+    check('calendar_events', 'importance'),
+    check('calendar_events', 'work_type'),
+    check('calendar_events', 'study_difficulty'),
+    check('calendar_events', 'mood_after'),
+    check('calendar_events', 'goal_achievement')
   )
 
   const results = await Promise.all(checks)

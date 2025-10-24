@@ -71,8 +71,21 @@ export default function FlashcardReviewPage() {
     }
 
     try {
-      const initialQueue = deck.cards.map((_, i) => i).sort(() => Math.random() - 0.5);
-      setReviewQueue(initialQueue);
+      const now = new Date();
+      // Filter cards that are due for review (nextReview is null or in the past)
+      const dueCardIndices = deck.cards
+        .map((card, i) => ({ card, index: i }))
+        .filter(({ card }) => !card.nextReview || new Date(card.nextReview) <= now)
+        .map(({ index }) => index)
+        .sort(() => Math.random() - 0.5);
+      
+      if (dueCardIndices.length === 0) {
+        setSessionState('error');
+        setError('No cards are due for review. Come back later!');
+        return;
+      }
+      
+      setReviewQueue(dueCardIndices);
       setMasteredCount(0);
       setCurrentIndex(0);
       setSessionState('studying');
@@ -107,6 +120,9 @@ export default function FlashcardReviewPage() {
     if (!deck || reviewQueue.length === 0) return;
 
     try {
+      const currentCardIndex = reviewQueue[currentIndex];
+      const currentCard = deck.cards[currentCardIndex];
+
       if (reviewQueue.length === 1 && rating === 'again') {
         toast({ 
           title: "Try again!", 
@@ -114,6 +130,35 @@ export default function FlashcardReviewPage() {
         });
         setIsFlipped(false);
         return;
+      }
+
+      // Update card SRS data
+      const now = new Date();
+      const nextReviewDate = new Date(now);
+      
+      if (rating === 'good') {
+        nextReviewDate.setDate(now.getDate() + deck.srsGoodInterval);
+      } else if (rating === 'easy') {
+        nextReviewDate.setDate(now.getDate() + deck.srsEasyInterval);
+      }
+
+      // Update the card in the deck's data
+      if (rating !== 'again') {
+        findAndMutateDecks(mockFlashcardSystem, deck.id, (arr, index) => {
+          const newArr = [...arr];
+          const deckToUpdate = newArr[index] as any;
+          if (deckToUpdate.type === 'deck') {
+            const updatedCards = [...deckToUpdate.cards];
+            updatedCards[currentCardIndex] = {
+              ...updatedCards[currentCardIndex],
+              lastReviewed: now.toISOString(),
+              nextReview: nextReviewDate.toISOString(),
+              difficulty: rating,
+            };
+            deckToUpdate.cards = updatedCards;
+          }
+          return newArr;
+        });
       }
 
       if (rating !== 'again') {

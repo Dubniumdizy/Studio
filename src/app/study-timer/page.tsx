@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { downloadCSV } from '@/lib/export'
 import { useRouter } from 'next/navigation'
 import { FocusInline } from '@/components/focus/FocusInline'
-import { Forest } from '@/components/study-timer/Forest'
+import { DancingAnimals, SadAnimalsMessage } from '@/components/study-timer/DancingAnimals'
 import { mockBankData, updateBankData, addFileToRoot, type FileOrFolder } from '@/lib/bank-data'
 
 interface LocalStudySession {
@@ -36,12 +36,12 @@ interface LocalStudySession {
 type SubjectOption = { id: string; name: string; examDate?: string }
 
 type PostSessionSurvey = {
-  reachedGoal: boolean
+  goalAchievement: 0 | 0.5 | 1  // 0=less, 0.5=exact, 1=more
   happiness: 1|2|3|4|5
   energyAfter: 1|2|3|4|5
-  breaks: string[]
   hardness: 1|2|3|4|5
   nextPlan?: string
+  usedSolutions?: boolean
 }
 
 export default function StudyTimerPage() {
@@ -56,22 +56,26 @@ export default function StudyTimerPage() {
   const [energyLevel, setEnergyLevel] = useState(4)
   // Removed notes per request
   const [sessionGoal, setSessionGoal] = useState('')
-  const [examSoon, setExamSoon] = useState<boolean | null>(null)
   const [sessionHistory, setSessionHistory] = useState<LocalStudySession[]>([])
   const [showBreak, setShowBreak] = useState(false)
   const [aiAdvice, setAiAdvice] = useState<string>('')
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null)
   const [showSurvey, setShowSurvey] = useState(false)
+  const [animalCount, setAnimalCount] = useState(0)
   const [survey, setSurvey] = useState<PostSessionSurvey>({
-    reachedGoal: false,
+    goalAchievement: 0.5,
     happiness: 3,
     energyAfter: 3,
-    breaks: [],
     hardness: 3,
-    nextPlan: ''
+    nextPlan: '',
+    usedSolutions: false
   })
-  const [savedBreaks, setSavedBreaks] = useState<string[]>([])
-  const [currentSessionBreaks, setCurrentSessionBreaks] = useState<string[]>([])
+  const [showSadMessage, setShowSadMessage] = useState(false)
+  const [timerComplete, setTimerComplete] = useState(false)
+  const [showStopConfirm, setShowStopConfirm] = useState(false)
+  const [blockedSites, setBlockedSites] = useState<string[]>([])
+  const [newBlockedSite, setNewBlockedSite] = useState('')
+  const [showBlockSettings, setShowBlockSettings] = useState(false)
 
   // Background media (YouTube or GIF)
   // Background disabled per request
@@ -117,8 +121,16 @@ export default function StudyTimerPage() {
         setSessionHistory([])
       }
     }
-    const savedBreaksStr = localStorage.getItem('studyBreaks')
-    if (savedBreaksStr) setSavedBreaks(JSON.parse(savedBreaksStr))
+
+    // Load blocked sites
+    const savedBlocked = localStorage.getItem('blockedSites')
+    if (savedBlocked) {
+      try {
+        setBlockedSites(JSON.parse(savedBlocked))
+      } catch {
+        setBlockedSites([])
+      }
+    }
 
     // Initialize audio
     try {
@@ -181,6 +193,7 @@ export default function StudyTimerPage() {
     setIsRunning(false)
     setShowBreak(true)
     setShowSurvey(true)
+    setTimerComplete(true)
     
     // Play notification sound (soft bell, loop until acknowledged)
     // Start ringing bell repeatedly until acknowledged
@@ -207,45 +220,6 @@ export default function StudyTimerPage() {
       const updatedHistory = [session, ...sessionHistory]
       setSessionHistory(updatedHistory)
       localStorage.setItem('studySessionHistory', JSON.stringify(updatedHistory))
-
-      // Persist to Supabase if logged in
-      if (user?.id) {
-        try {
-          const endedAtISO = new Date().toISOString()
-          await supabase.from('study_sessions').insert({
-            user_id: user.id,
-            subject_id: selectedSubjectId || null,
-            subject_name: subjectName,
-            goal_text: sessionGoal || null,
-            duration_minutes: Math.round(session.duration / 60),
-            energy_before: energyLevel,
-            notes: null,
-            started_at: sessionStartTime.toISOString(),
-            ended_at: endedAtISO
-          })
-          // Also log as a completed calendar activity
-          const calEvent = {
-            id: `done-session-${Date.now()}`,
-            user_id: user.id,
-            title: `Study: ${subjectName} (done)`,
-            description: sessionGoal ? `Goal: ${sessionGoal}` : null,
-            start: sessionStartTime.toISOString(),
-            end: endedAtISO,
-            all_day: false,
-            tags: ['study','done']
-          }
-          void supabase.from('calendar_events').upsert(calEvent)
-          // Update local cache so it appears immediately in Calendar
-          try {
-            const cached = localStorage.getItem('calendar_events')
-            const arr = cached ? JSON.parse(cached) : []
-            arr.push({ id: calEvent.id, title: calEvent.title, description: calEvent.description || undefined, start: new Date(calEvent.start), end: new Date(calEvent.end), allDay: false, tags: calEvent.tags })
-            localStorage.setItem('calendar_events', JSON.stringify(arr))
-          } catch {}
-        } catch (e) {
-          console.error('Failed to persist session', e)
-        }
-      }
 
       // Also export a CSV row so you have a "sheet" copy locally and upload to Bank storage if available
       try {
@@ -296,6 +270,22 @@ export default function StudyTimerPage() {
 
   // AI advice removed
 
+  const addBlockedSite = () => {
+    const site = newBlockedSite.trim()
+    if (site && !blockedSites.includes(site)) {
+      const updated = [...blockedSites, site]
+      setBlockedSites(updated)
+      localStorage.setItem('blockedSites', JSON.stringify(updated))
+      setNewBlockedSite('')
+    }
+  }
+
+  const removeBlockedSite = (site: string) => {
+    const updated = blockedSites.filter(s => s !== site)
+    setBlockedSites(updated)
+    localStorage.setItem('blockedSites', JSON.stringify(updated))
+  }
+
   const startSession = () => {
     const subjectChosen = selectedSubjectId || customSubject.trim()
     if (!subjectChosen) {
@@ -314,28 +304,46 @@ export default function StudyTimerPage() {
     setSessionStartTime(new Date())
     setShowBreak(false)
     setAiAdvice('')
-    setCurrentSessionBreaks([])
+    setAnimalCount(0)
   }
 
   const pauseSession = () => {
     setIsRunning(false)
   }
 
-  const resetSession = async () => {
-    // If stopping while running, trigger blow-away before reset
+  const handleStopClick = () => {
     if (isRunning) {
-      setBlowForest(true)
-      // Reset forest score on early stop
-      try { if (typeof window !== 'undefined') localStorage.setItem('forest_score','0') } catch {}
-      await new Promise((r) => setTimeout(r, 1300))
-      setBlowForest(false)
+      setShowStopConfirm(true)
+    } else {
+      resetSession()
     }
+  }
+
+  const confirmStop = async () => {
+    setShowStopConfirm(false)
+    // Show sad message for early stop
+    setShowSadMessage(true)
+    setBlowForest(true)
+    // Reset forest score on early stop
+    try { if (typeof window !== 'undefined') localStorage.setItem('forest_score','0') } catch {}
+    await new Promise((r) => setTimeout(r, 1300))
+    setBlowForest(false)
+    resetSession()
+  }
+
+  const cancelStop = () => {
+    setShowStopConfirm(false)
+  }
+
+  const resetSession = async () => {
     setIsRunning(false)
     setTimeLeft(Math.max(0, Math.min(300, durationMinutes)) * 60)
     setAiAdvice('')
     setShowBreak(false)
     setSessionStartTime(null)
     setShowSurvey(false)
+    setTimerComplete(false)
+    setAnimalCount(0)
     
     if (audioRef.current) {
       audioRef.current.pause()
@@ -415,10 +423,9 @@ export default function StudyTimerPage() {
     const subjectNameRaw = selectedSubjectId ? (subjects.find(s => s.id === selectedSubjectId)?.name || '') : (customSubject || '')
     const subjectLower = subjectNameRaw.toLowerCase()
     const headers = [
-      'date','started_at','ended_at','user_id','subject','subject_id','duration_minutes','duration_seconds','energy_before','goal','exam_soon','reached_goal','happiness','energy_after','breaks','hardness','next_plan','forest_trees'
+      'date','started_at','ended_at','user_id','subject','subject_id','duration_minutes','duration_seconds','energy_before','goal','goal_achievement','happiness','energy_after','used_solutions','hardness','next_plan','forest_trees'
     ]
     const dateOnly = endedAt.slice(0,10)
-    const mergedBreaks = Array.from(new Set([...(currentSessionBreaks||[]), ...((survey.breaks||[]))]))
     const rowVals = [
       dateOnly,
       startedAt,
@@ -430,11 +437,10 @@ export default function StudyTimerPage() {
       elapsed,
       energyLevel,
       sessionGoal || '',
-      examSoon ? 'yes' : 'no',
-      survey.reachedGoal ? 'yes' : 'no',
+      survey.goalAchievement,
       survey.happiness,
       survey.energyAfter,
-      mergedBreaks.join('; '),
+      survey.usedSolutions ? 'yes' : 'no',
       survey.hardness,
       survey.nextPlan || '',
       sessionTrees
@@ -447,9 +453,17 @@ export default function StudyTimerPage() {
 
     // Merge into a single master CSV in Bank (Home/study_sessions.csv)
     try {
-      const current = mockBankData.slice()
-      // Find Home folder
-      const home = current.find(it => it.id === 'home' && it.type === 'folder') as FileOrFolder | undefined
+      let current: FileOrFolder[] = []
+      try {
+        const raw = localStorage.getItem('bankData')
+        if (raw) current = JSON.parse(raw)
+      } catch {}
+      // Find or create Home folder
+      let home = current.find(it => it.id === 'home' && it.type === 'folder') as FileOrFolder | undefined
+      if (!home) {
+        home = { id: 'home', name: 'Home', type: 'folder', items: [] }
+        current = [home, ...current]
+      }
       if (home) {
         let master = (home.items || []).find(it => it.type === 'file' && it.name === 'study_sessions.csv')
         const headerLine = headers.join(',') + '\r\n'
@@ -463,7 +477,11 @@ export default function StudyTimerPage() {
         if (!master.content.startsWith(headerLine)) master.content = headerLine + master.content
         master.content += line
         updateBankData(current)
-        try { localStorage.setItem('bankData', JSON.stringify(current)) } catch {}
+        try { 
+          localStorage.setItem('bankData', JSON.stringify(current))
+          try { window.dispatchEvent(new CustomEvent('bankDataUpdated', { detail: current } as any)) } catch {}
+          try { if ('BroadcastChannel' in window) { const bc = new BroadcastChannel('bank-updates'); bc.postMessage({ type: 'bankDataUpdated', payload: current }); bc.close() } } catch {}
+        } catch {}
         // Also trigger a user download of the updated master CSV for external editing
         try {
           const blob = new Blob([master.content], { type: 'text/csv;charset=utf-8' })
@@ -475,33 +493,103 @@ export default function StudyTimerPage() {
       }
     } catch {}
 
+    // Create goal from nextPlan if it exists and a subject is selected
+    if (user?.id && selectedSubjectId && survey.nextPlan?.trim()) {
+      try {
+        await supabase.from('goals').insert({
+          user_id: user.id,
+          subject_id: selectedSubjectId,
+          title: survey.nextPlan.trim(),
+          description: `Auto-created from study session: ${sessionGoal || 'Study session'}`,
+          current_value: 0,
+          target_value: 1,
+          unit: 'task',
+          completed: false,
+          created_at: endedAt,
+          updated_at: endedAt
+        })
+      } catch (e) {
+        console.warn('Failed to create goal from next plan:', e)
+      }
+    }
+
     // Fire-and-forget persistence so navigation is instant
     if (user?.id) {
       try {
-        if (survey.breaks?.length) {
-          const merged = Array.from(new Set([...(savedBreaks||[]), ...survey.breaks]))
-          setSavedBreaks(merged)
-          localStorage.setItem('studyBreaks', JSON.stringify(merged))
-        }
         const payload = {
           user_id: user.id,
           subject_id: selectedSubjectId || null,
           subject_name: subjectLower,
-          reached_goal: survey.reachedGoal,
+          goal_achievement: survey.goalAchievement,
           happiness: survey.happiness,
           energy_after: survey.energyAfter,
-          breaks: mergedBreaks,
           hardness: survey.hardness,
           next_plan: survey.nextPlan || null,
+          used_solutions: survey.usedSolutions || false,
           created_at: endedAt
         }
         void supabase.from('study_session_surveys').insert(payload)
+        // Also update the study_sessions record with duration and goal achievement
+        try {
+          const totalSeconds = Math.max(0, Math.min(300, durationMinutes)) * 60
+          const elapsedSeconds = totalSeconds - timeLeft
+          await supabase.from('study_sessions').insert({
+            user_id: user.id,
+            subject_id: selectedSubjectId || null,
+            subject_name: subjectLower,
+            goal_text: sessionGoal || null,
+            duration_minutes: Math.round(elapsedSeconds / 60),
+            duration_seconds: elapsedSeconds,
+            energy_before: energyLevel,
+            energy_after: survey.energyAfter,
+            goal_achievement: survey.goalAchievement,
+            used_solutions: survey.usedSolutions || false,
+            notes: null,
+            started_at: startedAt,
+            ended_at: endedAt
+          })
+        } catch (e) {
+          console.warn('Failed to update study_sessions with goal achievement/duration', e)
+        }
+        // Update Bank CSV with this session row (for analytics to read)
+        try {
+          let current: FileOrFolder[] = []
+          try {
+            const raw = localStorage.getItem('bankData')
+            if (raw) current = JSON.parse(raw)
+          } catch {}
+          let home = current.find(it => it.id === 'home' && it.type === 'folder') as FileOrFolder | undefined
+          if (!home) {
+            home = { id: 'home', name: 'Home', type: 'folder', items: [] }
+            current = [home, ...current]
+          }
+          if (home) {
+            let master = (home.items || []).find(it => it.type === 'file' && it.name === 'study_sessions.csv')
+            const headerLine = headers.join(',') + '\r\n'
+            if (!master) {
+              master = { id: `file-${Date.now()}`, name: 'study_sessions.csv', type: 'file', content: headerLine, mime: 'text/csv' }
+              home.items = [master, ...(home.items || [])]
+            }
+            const line = csvLine(rowVals) + '\r\n'
+            master.content = (master.content || headerLine)
+            if (!master.content.startsWith(headerLine)) master.content = headerLine + master.content
+            master.content += line
+            updateBankData(current)
+            try { 
+              localStorage.setItem('bankData', JSON.stringify(current))
+              try { window.dispatchEvent(new CustomEvent('bankDataUpdated', { detail: current } as any)) } catch {}
+              try { if ('BroadcastChannel' in window) { const bc = new BroadcastChannel('bank-updates'); bc.postMessage({ type: 'bankDataUpdated', payload: current }); bc.close() } } catch {}
+            } catch {}
+          }
+        } catch (e) {
+          console.warn('Failed to update Bank CSV', e)
+        }
         // Also upload CSV to Supabase Storage bank bucket
         const blob = new Blob([csv], { type: 'text/csv' })
         const safeSubject = (subjectLower || 'general').replace(/[^a-z0-9-_]+/gi, '_')
         const path = `study_sessions/${safeSubject}/study_${safeSubject}_${dateOnly}.csv`
         void supabase.storage.from('bank').upload(path, blob, { upsert: true, contentType: 'text/csv' })
-        // Also log a completed calendar event here (in case timer wasn’t auto-finish path)
+        // Also log a completed calendar event here (in case timer wasn't auto-finish path)
         const calId = `done-session-${Date.now()}`
         const calRow = {
           id: calId,
@@ -511,13 +599,31 @@ export default function StudyTimerPage() {
           start: startedAt || endedAt,
           end: endedAt,
           all_day: false,
-          tags: ['study','done']
+          tags: ['study','done'],
+          energy_level: energyLevel,
+          study_difficulty: survey.hardness,
+          mood_after: survey.energyAfter,
+          goal_achievement: survey.goalAchievement,
+          work_type: 'deep'
         }
         void supabase.from('calendar_events').upsert(calRow)
         try {
           const cached = localStorage.getItem('calendar_events')
           const arr = cached ? JSON.parse(cached) : []
-          arr.push({ id: calRow.id, title: calRow.title, description: calRow.description || undefined, start: new Date(calRow.start), end: new Date(calRow.end), allDay: false, tags: calRow.tags })
+          arr.push({ 
+            id: calRow.id, 
+            title: calRow.title, 
+            description: calRow.description || undefined, 
+            start: new Date(calRow.start), 
+            end: new Date(calRow.end), 
+            allDay: false, 
+            tags: calRow.tags,
+            energyLevel: calRow.energy_level,
+            studyDifficulty: calRow.study_difficulty,
+            moodAfter: calRow.mood_after,
+            goalAchievement: calRow.goal_achievement,
+            workType: calRow.work_type
+          })
           localStorage.setItem('calendar_events', JSON.stringify(arr))
         } catch {}
       } catch (e) {
@@ -581,13 +687,47 @@ export default function StudyTimerPage() {
         <div className="grid grid-cols-1 gap-4">
           <Card className="border-2 border-green-200 overflow-hidden">
             <div ref={containerRef} className="relative h-[72vh] bg-gradient-to-br from-green-50 to-emerald-100">
-              {/* Forest overlay */}
-              <Forest elapsedSeconds={Math.max(0, Math.min(300, durationMinutes)) * 60 - timeLeft} burning={blowForest} />
+              {/* Dancing animals overlay */}
+              <DancingAnimals 
+                elapsedSeconds={Math.max(0, Math.min(300, durationMinutes)) * 60 - timeLeft}
+                totalSeconds={Math.max(0, Math.min(300, durationMinutes)) * 60}
+                isComplete={timerComplete}
+              />
 
               {/* Stop button while running */}
               <div className="absolute top-3 right-3 z-10">
-                <Button onClick={resetSession} variant="outline" className="border-red-200 text-red-700 bg-white/90">Stop Session</Button>
+                <Button onClick={handleStopClick} variant="outline" className="border-red-200 text-red-700 bg-white/90">Stop Session</Button>
               </div>
+
+              {/* Stop confirmation dialog */}
+              {showStopConfirm && (
+                <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center">
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center mx-4">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                      Stop studying?
+                    </h2>
+                    <p className="text-lg text-gray-600 mb-6">
+                      The animals won't get their cake if you stop now! 😢
+                    </p>
+                    <div className="flex gap-4 justify-center">
+                      <Button
+                        onClick={cancelStop}
+                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
+                      >
+                        Continue Studying
+                      </Button>
+                      <Button
+                        onClick={confirmStop}
+                        variant="outline"
+                        className="border-red-300 text-red-700 hover:bg-red-50 px-8 py-3"
+                      >
+                        Stop Anyway
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Tiny timer cube (draggable) */}
               <div
@@ -609,6 +749,12 @@ export default function StudyTimerPage() {
 
   // Pre-session view (not running)
   return (
+    <>
+      {/* Sad animals message modal */}
+      {showSadMessage && (
+        <SadAnimalsMessage onClose={() => setShowSadMessage(false)} />
+      )}
+      
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4 text-2xl font-bold text-green-800">
@@ -679,32 +825,6 @@ export default function StudyTimerPage() {
                       </Select>
                       <Input placeholder="Or type a custom subject" value={customSubject} onChange={(e)=>{ setCustomSubject(e.target.value); setSelectedSubjectId(''); }} className="border-green-200" />
                     </div>
-                    {/* Exam soon prompt */}
-                    {(selectedSubjectId || customSubject) && (
-                      <div className="text-xs text-green-700 mt-1">
-                        {(() => {
-                          const subj = subjects.find(s => s.id === selectedSubjectId)
-                          if (subj?.examDate) {
-                            const days = Math.ceil((new Date(subj.examDate).getTime() - Date.now()) / (1000*60*60*24))
-                            return (
-                              <div className="flex items-center gap-2">
-                                <span>Exam in {days} days.</span>
-                                <label className="inline-flex items-center gap-1">
-                                  <input type="checkbox" checked={!!examSoon} onChange={e=>setExamSoon(e.target.checked)} />
-                                  Focus on this for the session?
-                                </label>
-                              </div>
-                            )
-                          }
-                          return (
-                            <label className="inline-flex items-center gap-1">
-                              <input type="checkbox" checked={!!examSoon} onChange={e=>setExamSoon(e.target.checked)} />
-                              Is there an exam soon for this subject?
-                            </label>
-                          )
-                        })()}
-                      </div>
-                    )}
                   </div>
 
                   {/* Session Goal */}
@@ -739,6 +859,69 @@ export default function StudyTimerPage() {
                     </p>
                   </div>
 
+                  {/* Blocked Sites/Apps */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-green-700">Block Distractions</label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowBlockSettings(!showBlockSettings)}
+                        className="text-xs"
+                      >
+                        {showBlockSettings ? 'Hide' : 'Show'} Settings
+                      </Button>
+                    </div>
+                    
+                    {showBlockSettings && (
+                      <div className="space-y-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-xs text-orange-700">
+                          ⚠️ Browser-based blocking is limited. For best results, use browser extensions like "BlockSite" or OS-level tools.
+                        </p>
+                        
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g., youtube.com, instagram.com"
+                            value={newBlockedSite}
+                            onChange={(e) => setNewBlockedSite(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && addBlockedSite()}
+                            className="border-orange-200"
+                          />
+                          <Button onClick={addBlockedSite} size="sm" className="bg-orange-600 hover:bg-orange-700">
+                            Add
+                          </Button>
+                        </div>
+
+                        {blockedSites.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-gray-700">Blocked during study:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {blockedSites.map((site) => (
+                                <Badge 
+                                  key={site} 
+                                  variant="outline" 
+                                  className="bg-red-50 border-red-200 text-red-700"
+                                >
+                                  {site}
+                                  <button
+                                    onClick={() => removeBlockedSite(site)}
+                                    className="ml-2 hover:text-red-900"
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-gray-600">
+                          💡 Tip: Install a browser extension like "BlockSite", "Cold Turkey", or "Freedom" for effective website blocking.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
 
                   
 
@@ -762,7 +945,7 @@ export default function StudyTimerPage() {
                       </Button>
                     )}
                     <Button 
-                      onClick={resetSession}
+                      onClick={handleStopClick}
                       variant="outline"
                       className="border-red-200 text-red-700"
                     >
@@ -782,16 +965,24 @@ export default function StudyTimerPage() {
                   {showSurvey && (
                     <div className="text-left max-w-xl mx-auto space-y-4">
                       <div className="flex items-center justify-between">
-                        <label>Did you reach your set goal?</label>
-                        <Select value={survey.reachedGoal ? 'yes' : 'no'} onValueChange={(v)=>setSurvey(prev=>({...prev, reachedGoal: v==='yes'}))}>
+                        <label>How did you do compared to your goal?</label>
+                        <Select value={String(survey.goalAchievement)} onValueChange={(v)=>setSurvey(prev=>({...prev, goalAchievement: Number(v) as 0 | 0.5 | 1}))}>
                           <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="yes">Yes</SelectItem>
-                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="0">Less</SelectItem>
+                            <SelectItem value="0.5">Exact</SelectItem>
+                            <SelectItem value="1">More</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" checked={survey.usedSolutions || false} onChange={(e)=>setSurvey(p=>({...p, usedSolutions: e.target.checked}))} />
+                          Did you check solutions or answers?
+                        </label>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -802,26 +993,6 @@ export default function StudyTimerPage() {
                         <div>
                           <label>Energy now (1-5)</label>
                           <Input type="number" min={1} max={5} value={survey.energyAfter} onChange={(e)=>setSurvey(p=>({...p, energyAfter: Math.min(5, Math.max(1, Number(e.target.value))) as 1|2|3|4|5}))} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block">Breaks taken this session</label>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {Array.from(new Set(['drink/eat','social','power nap','hobby','phone','artistic','study together', ...(savedBreaks||[])])).map(b => (
-                            <Button key={b} type="button" variant={survey.breaks.includes(b) ? 'default' : 'outline'} size="sm" onClick={()=>setSurvey(p=>({...p, breaks: p.breaks.includes(b) ? p.breaks.filter(x=>x!==b) : [...p.breaks, b]}))}>{b}</Button>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <Input placeholder="Add another break label and press Enter" onKeyDown={(e)=>{
-                            if (e.key==='Enter') {
-                              const val = (e.target as HTMLInputElement).value.trim()
-                              if (val) {
-                                setSurvey(p=>({...p, breaks: Array.from(new Set([...(p.breaks||[]), val])) }))
-                                ;(e.target as HTMLInputElement).value=''
-                              }
-                            }
-                          }} />
                         </div>
                       </div>
 
@@ -912,5 +1083,6 @@ export default function StudyTimerPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }

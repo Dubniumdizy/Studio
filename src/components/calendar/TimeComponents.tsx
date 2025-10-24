@@ -5,14 +5,20 @@ import { HOUR_HEIGHT as LIB_HOUR_HEIGHT } from '@/lib/calendarUtils';
 
 interface TimeGutterProps {
     headerHeight?: number;
+    minHour?: number; // inclusive, default 0
+    maxHour?: number; // inclusive, default 23
 }
 
 export const HOUR_HEIGHT = LIB_HOUR_HEIGHT;
 
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
 
-const TimeGutterImpl: React.FC<TimeGutterProps> = ({ headerHeight = 60 }) => {
-    const hours = HOURS_24; // stable reference
+const TimeGutterImpl: React.FC<TimeGutterProps> = ({ headerHeight = 60, minHour = 0, maxHour = 23 }) => {
+    const hours = useMemo(() => {
+        const start = Math.max(0, Math.min(23, minHour));
+        const end = Math.max(start, Math.min(23, maxHour));
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }, [minHour, maxHour]);
 
     return (
         <div className="w-16 border-r bg-muted/30 flex-shrink-0 sticky left-0 z-20">
@@ -39,7 +45,9 @@ const TimeGutterImpl: React.FC<TimeGutterProps> = ({ headerHeight = 60 }) => {
 
 export const TimeGutter = React.memo(TimeGutterImpl);
 
-const TimeIndicatorImpl: React.FC = () => {
+interface TimeIndicatorProps { minHour?: number; maxHour?: number }
+
+const TimeIndicatorImpl: React.FC<TimeIndicatorProps> = ({ minHour = 0, maxHour = 23 }) => {
     const [now, setNow] = useState(new Date());
 
     useEffect(() => {
@@ -75,16 +83,19 @@ const TimeIndicatorImpl: React.FC = () => {
 
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    const topPosition = (currentHour * HOUR_HEIGHT) + (currentMinute / 60 * HOUR_HEIGHT);
+    const topPositionAbsolute = (currentHour * HOUR_HEIGHT) + (currentMinute / 60 * HOUR_HEIGHT);
+    const offset = (minHour) * HOUR_HEIGHT;
+    const visibleTop = topPositionAbsolute - offset;
+    const visibleHeight = (maxHour - minHour + 1) * HOUR_HEIGHT;
 
-    if (topPosition < 0 || topPosition > 24 * HOUR_HEIGHT) {
+    if (visibleTop < 0 || visibleTop > visibleHeight) {
         return null;
     }
 
     return (
         <div 
             className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
-            style={{ top: `${topPosition}px` }}
+            style={{ top: `${visibleTop}px` }}
         >
             <div className="w-2 h-2 bg-red-500 rounded-full -ml-1" />
             <div className="flex-1 h-[2px] bg-red-500" />
