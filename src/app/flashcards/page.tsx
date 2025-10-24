@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { mockFlashcardSystem, addItemToFolder, findAndMutateDecks, type FileSystemItem, type Deck, type Folder, findItemInFileSystem } from "@/lib/flashcard-data";
 import { findStaleCards } from "@/lib/flashcard-archive";
-import { Folder as FolderIcon, MoreHorizontal, Pencil, Copy, Trash2, FolderOpen, PlusCircle, Brain, BookCopy, FolderPlus, Move, FolderKanban, Loader2, AlertTriangle, FileText, Archive } from "lucide-react";
+import { Folder as FolderIcon, MoreHorizontal, Pencil, Copy, Trash2, FolderOpen, PlusCircle, Brain, BookCopy, FolderPlus, Move, FolderKanban, Loader2, AlertTriangle, FileText, Archive, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +55,12 @@ export default function FlashcardsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [isPDFDialogOpen, setIsPDFDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // Global SRS settings
+  const [globalSrsGoodInterval, setGlobalSrsGoodInterval] = useState(1);
+  const [globalSrsEasyInterval, setGlobalSrsEasyInterval] = useState(4);
+  const [globalArchiveDays, setGlobalArchiveDays] = useState(90);
   
   const [selectedItem, setSelectedItem] = useState<FileSystemItem | null>(null);
   const [itemToMove, setItemToMove] = useState<FileSystemItem | null>(null);
@@ -440,6 +446,13 @@ export default function FlashcardsPage() {
           description="Organize your study materials into decks and folders. Create, review, and master your knowledge." 
         />
         <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsSettingsOpen(true)}
+            variant="outline"
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
           <Link href="/flashcards/archive">
             <Button 
               variant="outline"
@@ -641,6 +654,100 @@ export default function FlashcardsPage() {
         onCreateDeck={handleCreateDeckFromPDF}
         createLoading={createLoading}
       />
+
+      {/* Global Settings Dialog */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Spaced Repetition Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <Alert>
+              <Settings className="h-4 w-4" />
+              <AlertDescription>
+                These settings will apply to all flashcard decks.
+              </AlertDescription>
+            </Alert>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="global-srs-good">"Good" interval (days)</Label>
+                <Input 
+                  id="global-srs-good" 
+                  type="number" 
+                  min="1" 
+                  value={globalSrsGoodInterval} 
+                  onChange={(e) => setGlobalSrsGoodInterval(Number(e.target.value))} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cards marked as "Good" will reappear after this many days.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="global-srs-easy">"Easy" interval (days)</Label>
+                <Input 
+                  id="global-srs-easy" 
+                  type="number" 
+                  min="1" 
+                  value={globalSrsEasyInterval} 
+                  onChange={(e) => setGlobalSrsEasyInterval(Number(e.target.value))} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cards marked as "Easy" will reappear after this many days.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="global-archive-days">Archive after (days)</Label>
+                <Input 
+                  id="global-archive-days" 
+                  type="number" 
+                  min="1" 
+                  value={globalArchiveDays} 
+                  onChange={(e) => setGlobalArchiveDays(Number(e.target.value))} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cards not reviewed for this many days will be moved to the archive.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={() => {
+              // Apply settings to all decks
+              const updateAllDecks = (items: FileSystemItem[]): FileSystemItem[] => {
+                return items.map(item => {
+                  if (item.type === 'folder') {
+                    return { ...item, items: updateAllDecks(item.items) };
+                  } else if (item.type === 'deck') {
+                    return {
+                      ...item,
+                      srsGoodInterval: globalSrsGoodInterval,
+                      srsEasyInterval: globalSrsEasyInterval,
+                      archiveDays: globalArchiveDays,
+                    };
+                  }
+                  return item;
+                });
+              };
+              
+              const updatedItems = updateAllDecks(items);
+              mockFlashcardSystem.length = 0;
+              mockFlashcardSystem.push(...updatedItems);
+              setItems(updatedItems);
+              
+              toast({
+                title: "Settings saved!",
+                description: "Spaced repetition settings applied to all decks.",
+              });
+              setIsSettingsOpen(false);
+            }}>
+              Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
