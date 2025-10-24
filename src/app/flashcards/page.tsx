@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, Fragment, useCallback, useMemo } from "react";
+import React, { useState, useRef, Fragment, useCallback, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,17 @@ import { PDFToFlashcardsDialog } from "@/components/flashcards/pdf-to-flashcards
 export default function FlashcardsPage() {
   const [items, setItems] = useState<FileSystemItem[]>(mockFlashcardSystem);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ 'folder-1': true });
-  const staleCardsCount = useMemo(() => findStaleCards(items).length, [items]);
+  const [staleCardsCount, setStaleCardsCount] = useState(0);
+  
+  // Calculate stale cards count on mount and when explicitly needed
+  const refreshStaleCount = useCallback(() => {
+    setStaleCardsCount(findStaleCards(items).length);
+  }, [items]);
+  
+  // Initial count
+  React.useEffect(() => {
+    refreshStaleCount();
+  }, []);
   
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -78,6 +88,7 @@ export default function FlashcardsPage() {
       toast({ title: `Deleted "${selectedItem?.name}"` });
       setIsDeleteDialogOpen(false);
       setSelectedItem(null);
+      refreshStaleCount();
     },
     onError: (error) => {
       toast({ 
@@ -136,6 +147,7 @@ export default function FlashcardsPage() {
       toast({ title: `Moved "${itemToMove?.name}"` });
       setIsMoveDialogOpen(false);
       setItemToMove(null);
+      refreshStaleCount();
     },
     onError: (error) => {
       toast({ 
@@ -741,6 +753,7 @@ export default function FlashcardsPage() {
                 title: "Settings saved!",
                 description: "Spaced repetition settings applied to all decks.",
               });
+              refreshStaleCount();
               setIsSettingsOpen(false);
             }}>
               Save Settings
