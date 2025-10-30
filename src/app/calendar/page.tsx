@@ -1361,32 +1361,148 @@ export default function EnhancedCalendarPage() {
   }
 
   const generateICSContent = (events: EnhancedCalendarEvent[]): string => {
-    let ics = 'BEGIN:VCALENDAR\r\n'
-    ics += 'VERSION:2.0\r\n'
-    ics += 'PRODID:-//Studyverse Garden//Calendar//EN\r\n'
-    ics += 'CALSCALE:GREGORIAN\r\n'
-    ics += 'METHOD:PUBLISH\r\n'
+    // Helper to clean text for ICS format
+    const cleanICS = (text: string): string => {
+      return text
+        .replace(/\\/g, '')          // Remove backslashes completely
+        .replace(/[\r\n]+/g, ' ')   // Replace line breaks with spaces
+        .replace(/\s+/g, ' ')        // Collapse multiple spaces
+        .trim()                       // Remove leading/trailing spaces
+    }
+
+    // Build comprehensive description with all event info
+    const buildDescription = (event: EnhancedCalendarEvent): string => {
+      const parts: string[] = []
+      
+      // Original description with URL parsing
+      if (event.description) {
+        parts.push(event.description)
+        
+        // Try to extract info from URLs
+        const urlRegex = /https?:\/\/[^\s]+/g
+        const urls = event.description.match(urlRegex)
+        if (urls) {
+          urls.forEach(url => {
+            try {
+              const urlObj = new URL(url)
+              const pathname = urlObj.pathname
+              const searchParams = urlObj.searchParams
+              
+              // Extract parts from path (e.g., /room/id/d7857 or /CTMAT3)
+              const pathParts = pathname.split('/').filter(p => p)
+              
+              // Look for interesting info
+              const info: string[] = []
+              
+              // Check for room/course codes in path
+              pathParts.forEach(part => {
+                if (/^[A-Z]{2,}[0-9]+/.test(part)) {  // Matches CTMAT3, SA1006, etc
+                  info.push(`Course/Room: ${part}`)
+                } else if (part.length > 2 && part.toUpperCase() === part && /[A-Z]/.test(part)) {
+                  info.push(`Code: ${part}`)
+                }
+              })
+              
+              // Check search params
+              searchParams.forEach((value, key) => {
+                if (key && value) {
+                  info.push(`${key}: ${value}`)
+                }
+              })
+              
+              if (info.length > 0) {
+                parts.push('')
+                parts.push('URL Info:')
+                info.forEach(i => parts.push(`- ${i}`))
+              }
+            } catch (e) {
+              // Invalid URL, skip
+            }
+          })
+        }
+        
+        parts.push('')  // Empty line
+      }
+      
+      // Location
+      if (event.location) {
+        parts.push(`Location: ${event.location}`)
+      }
+      
+      // Tags
+      if (event.tags && event.tags.length > 0) {
+        parts.push(`Tags: ${event.tags.join(', ')}`)
+      }
+      
+      // Energy level
+      if (event.energyLevel) {
+        parts.push(`Energy Level: ${event.energyLevel}/5`)
+      }
+      
+      // Importance
+      if (event.importance) {
+        parts.push(`Importance: ${event.importance}/5`)
+      }
+      
+      // Work type
+      if (event.workType) {
+        parts.push(`Work Type: ${event.workType}`)
+      }
+      
+      // Checklist
+      if (event.checklist && event.checklist.length > 0) {
+        parts.push('')
+        parts.push('Checklist:')
+        event.checklist.forEach((item, i) => {
+          parts.push(`${i + 1}. ${item.text}`)
+        })
+      }
+      
+      // Reminders
+      if (event.reminders && event.reminders.length > 0) {
+        parts.push('')
+        parts.push('Reminders:')
+        event.reminders.forEach(r => {
+          parts.push(`- ${r.time} minutes before`)
+        })
+      }
+      
+      return cleanICS(parts.join('\n'))
+    }
+
+    let ics = ''
+    ics += 'BEGIN:VCALENDAR\n'
+    ics += 'VERSION:2.0\n'
+    ics += 'PRODID:-//Studyverse Garden//Calendar//EN\n'
+    ics += 'CALSCALE:GREGORIAN\n'
+    ics += 'METHOD:PUBLISH\n'
 
     events.forEach(event => {
-      ics += 'BEGIN:VEVENT\r\n'
-      ics += `UID:${event.id}@studyversegarden.com\r\n`
-      ics += `DTSTAMP:${format(new Date(), "yyyyMMdd'T'HHmmss'Z'")}\r\n`
-      ics += `DTSTART:${format(event.start, "yyyyMMdd'T'HHmmss'Z'")}\r\n`
-      ics += `DTEND:${format(event.end, "yyyyMMdd'T'HHmmss'Z'")}\r\n`
-      ics += `SUMMARY:${event.title.replace(/\n/g, '\\n')}\r\n`
-      if (event.description) {
-        ics += `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}\r\n`
+      ics += 'BEGIN:VEVENT\n'
+      ics += `UID:${event.id}@studyversegarden.com\n`
+      ics += `DTSTAMP:${format(new Date(), "yyyyMMdd'T'HHmmss'Z'")}\n`
+      ics += `DTSTART:${format(event.start, "yyyyMMdd'T'HHmmss'Z'")}\n`
+      ics += `DTEND:${format(event.end, "yyyyMMdd'T'HHmmss'Z'")}\n`
+      ics += `SUMMARY:${cleanICS(event.title || '')}\n`
+      
+      // Add comprehensive description
+      const description = buildDescription(event)
+      if (description) {
+        ics += `DESCRIPTION:${description}\n`
       }
+      
       if (event.location) {
-        ics += `LOCATION:${event.location}\r\n`
+        ics += `LOCATION:${cleanICS(event.location)}\n`
       }
+      
       if (event.tags && event.tags.length > 0) {
-        ics += `CATEGORIES:${event.tags.join(',')}\r\n`
+        ics += `CATEGORIES:${event.tags.map(t => cleanICS(t)).join(',')}\n`
       }
-      ics += 'END:VEVENT\r\n'
+      
+      ics += 'END:VEVENT\n'
     })
 
-    ics += 'END:VCALENDAR\r\n'
+    ics += 'END:VCALENDAR\n'
     return ics
   }
 
@@ -1537,6 +1653,71 @@ export default function EnhancedCalendarPage() {
     })
   }
 
+  // Delete all imported events
+  const deleteImportedEvents = async () => {
+    const importedEvents = events.filter(e => e.tags?.includes('imported'))
+    if (importedEvents.length === 0) {
+      toast({
+        title: 'No Imported Events',
+        description: 'There are no imported events to delete.',
+      })
+      return
+    }
+
+    const remainingEvents = events.filter(e => !e.tags?.includes('imported'))
+    setEvents(remainingEvents)
+
+    // Delete from Supabase if user is logged in
+    if (userId) {
+      for (const event of importedEvents) {
+        try {
+          await supabase.from('calendar_events').delete().eq('id', event.id).eq('user_id', userId)
+        } catch (error) {
+          console.error('Error deleting imported event:', error)
+        }
+      }
+    }
+
+    toast({
+      title: 'Imported Events Deleted',
+      description: `Deleted ${importedEvents.length} imported event(s).`,
+    })
+  }
+
+  // Delete all events today and forward
+  const deleteFutureEvents = async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Start of today
+    
+    const futureEvents = events.filter(e => e.start >= today)
+    if (futureEvents.length === 0) {
+      toast({
+        title: 'No Future Events',
+        description: 'There are no events today or in the future to delete.',
+      })
+      return
+    }
+
+    const remainingEvents = events.filter(e => e.start < today)
+    setEvents(remainingEvents)
+
+    // Delete from Supabase if user is logged in
+    if (userId) {
+      for (const event of futureEvents) {
+        try {
+          await supabase.from('calendar_events').delete().eq('id', event.id).eq('user_id', userId)
+        } catch (error) {
+          console.error('Error deleting future event:', error)
+        }
+      }
+    }
+
+    toast({
+      title: 'Future Events Deleted',
+      description: `Deleted ${futureEvents.length} event(s) from today onward.`,
+    })
+  }
+
   // Import calendar from URL
   const importFromUrl = async () => {
     try {
@@ -1564,22 +1745,97 @@ export default function EnhancedCalendarPage() {
           throw new Error('No events found in the calendar feed');
         }
         
-        // Convert iCal events to our format
-        const convertedEvents = parsedEvents.map((event: any, index: number) => ({
-          id: `imported-${Date.now()}-${index}`,
-          title: event.summary || 'Untitled Event',
-          description: event.description || '',
-          start: new Date(event.start),
-          end: new Date(event.end),
-          allDay: event.allDay || false,
-          location: event.location,
-          tags: ['imported'],
-          energyLevel: 3 as const,
-          importance: 3,
-          workType: 'shallow' as const,
-          checklist: [],
-          reminders: []
-        })) as EnhancedCalendarEvent[];
+        // Convert iCal events to our format - preserve ALL fields in description
+        const convertedEvents = parsedEvents.map((event: any, index: number) => {
+          // Build comprehensive description with all imported fields
+          const descParts: string[] = []
+          
+          // Original description
+          if (event.description) {
+            descParts.push(event.description)
+            descParts.push('')
+          }
+          
+          // Add ALL extra fields from the imported event
+          const extraFields: string[] = []
+          
+          // Common ICS fields that might have extra info
+          if (event.organizer) extraFields.push(`Organizer: ${event.organizer}`)
+          if (event.attendees && event.attendees.length > 0) {
+            extraFields.push(`Attendees: ${event.attendees.join(', ')}`)
+          }
+          if (event.categories && event.categories.length > 0) {
+            extraFields.push(`Categories: ${event.categories.join(', ')}`)
+          }
+          if (event.status) extraFields.push(`Status: ${event.status}`)
+          if (event.class) extraFields.push(`Class: ${event.class}`)
+          if (event.priority) extraFields.push(`Priority: ${event.priority}`)
+          if (event.resources && event.resources.length > 0) {
+            extraFields.push(`Resources: ${event.resources.join(', ')}`)
+          }
+          if (event.url) extraFields.push(`URL: ${event.url}`)
+          
+          // Add any custom fields (X-properties) and other unknown fields
+          Object.keys(event).forEach(key => {
+            // Skip the fields we've already shown
+            const skipFields = ['summary', 'description', 'start', 'end', 'allDay', 'location', 
+                               'organizer', 'attendees', 'categories', 'status', 'class', 
+                               'priority', 'resources', 'url', 'teacher', 'professor', 
+                               'instructor', 'course', 'courseCode', 'year', 'group']
+            
+            // Skip technical ICS metadata
+            const technicalFields = ['uid', 'dtstamp', 'last-modified', 'created', 'sequence', 'transp']
+            
+            if (!skipFields.includes(key) && !technicalFields.includes(key) && event[key]) {
+              const value = Array.isArray(event[key]) ? event[key].join(', ') : event[key]
+              if (value && value.toString().trim()) {
+                extraFields.push(`${key}: ${value}`)
+              }
+            }
+          })
+          
+          // Look for teacher/professor field (common names)
+          if (event.teacher) extraFields.push(`Teacher: ${event.teacher}`)
+          if (event.professor) extraFields.push(`Professor: ${event.professor}`)
+          if (event.instructor) extraFields.push(`Instructor: ${event.instructor}`)
+          
+          // Look for class/year/course fields
+          if (event.course) extraFields.push(`Course: ${event.course}`)
+          if (event.courseCode) extraFields.push(`Course Code: ${event.courseCode}`)
+          if (event.year) extraFields.push(`Year: ${event.year}`)
+          if (event.group) extraFields.push(`Group: ${event.group}`)
+          
+          // Extract course codes from description if present (e.g., CTMAT3, CTFYS2)
+          if (event.description) {
+            const courseCodeRegex = /\b([A-Z]{2,}[0-9]+)\b/g
+            const matches = event.description.match(courseCodeRegex)
+            if (matches && matches.length > 0) {
+              const uniqueCodes = [...new Set(matches)]
+              extraFields.push(`Course Codes: ${uniqueCodes.join(', ')}`)
+            }
+          }
+          
+          if (extraFields.length > 0) {
+            descParts.push('Additional Information:')
+            extraFields.forEach(field => descParts.push(`• ${field}`))
+          }
+          
+          return {
+            id: `imported-${Date.now()}-${index}`,
+            title: event.summary || 'Untitled Event',
+            description: descParts.join('\n'),
+            start: new Date(event.start),
+            end: new Date(event.end),
+            allDay: event.allDay || false,
+            location: event.location,
+            tags: ['imported'],
+            energyLevel: 3 as const,
+            importance: 3,
+            workType: 'shallow' as const,
+            checklist: [],
+            reminders: []
+          }
+        }) as EnhancedCalendarEvent[];
         
         setEvents(prev => [...prev, ...convertedEvents]);
         toast({
@@ -1998,6 +2254,33 @@ export default function EnhancedCalendarPage() {
                         setImportModalOpen(false)
                       }}>
                         Import from URL
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2 text-destructive">Danger Zone</h4>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="destructive" 
+                        className="w-full"
+                        onClick={() => {
+                          deleteImportedEvents()
+                          setImportModalOpen(false)
+                        }}
+                      >
+                        Delete All Imported Events
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        className="w-full"
+                        onClick={() => {
+                          if (confirm('Are you sure? This will delete ALL events from today forward!')) {
+                            deleteFutureEvents()
+                            setImportModalOpen(false)
+                          }
+                        }}
+                      >
+                        Delete Everything Today & Forward
                       </Button>
                     </div>
                   </div>

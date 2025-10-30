@@ -14,6 +14,7 @@ import { useSafeAsync } from "@/hooks/use-safe-async";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { isDemoMode, DEMO_CONFIG } from "@/lib/demo-mode";
 
 interface FormData {
   email: string;
@@ -34,6 +35,25 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Auto-login for demo mode
+  useEffect(() => {
+    if (isDemoMode() && !user && !authLoading && !submitting) {
+      const autoLogin = async () => {
+        setSubmitting(true);
+        try {
+          await signIn(DEMO_CONFIG.autoLogin.email, DEMO_CONFIG.autoLogin.password);
+        } catch (error) {
+          console.error('Demo auto-login failed:', error);
+        } finally {
+          setSubmitting(false);
+        }
+      };
+      
+      const timeout = setTimeout(autoLogin, DEMO_CONFIG.timings.loginDelay);
+      return () => clearTimeout(timeout);
+    }
+  }, [user, authLoading, submitting, signIn]);
 
   // Redirect if already logged in
   useEffect(() => {

@@ -46,21 +46,21 @@ export async function POST(request: NextRequest) {
 }
 
 function parseICalContent(content: string) {
-  const events: Array<{
-    summary?: string;
-    description?: string;
-    start: Date;
-    end: Date;
-    allDay?: boolean;
-    location?: string;
-  }> = [];
+  const events: Array<any> = [];
   
   const lines = content.split('\n');
   let currentEvent: any = {};
   let inEvent = false;
+  let lastKey = '';
   
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    let line = lines[i].trim();
+    
+    // Handle line folding (lines starting with space/tab continue previous line)
+    while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
+      i++;
+      line += lines[i].substring(1);
+    }
     
     if (line === 'BEGIN:VEVENT') {
       inEvent = true;
@@ -70,17 +70,66 @@ function parseICalContent(content: string) {
         events.push(currentEvent);
       }
       inEvent = false;
-    } else if (inEvent) {
-      const [rawKey, ...valueParts] = line.split(':');
-      const value = valueParts.join(':');
+    } else if (inEvent && line.includes(':')) {
+      const colonIndex = line.indexOf(':');
+      const rawKey = line.substring(0, colonIndex);
+      const value = line.substring(colonIndex + 1);
       const key = rawKey.split(';')[0]; // handle DTSTART;TZID=... etc
+      
+      // Clean and unescape value
+      const cleanValue = value
+        .replace(/\\n/g, '\n')
+        .replace(/\\,/g, ',')
+        .replace(/\\;/g, ';')
+        .replace(/\\\\/g, '\\');
+      
+      // Store with lowercase key for consistency
+      const lowerKey = key.toLowerCase();
+      lastKey = lowerKey;
       
       switch (key) {
         case 'SUMMARY':
-          currentEvent.summary = value;
+          // Replace backslashes with nothing to join (e.g., "CTMAT\1" -> "CTMAT1")
+          currentEvent.summary = cleanValue.replace(/\\/g, '');
           break;
         case 'DESCRIPTION':
-          currentEvent.description = value.replace(/\\n/g, '\n').replace(/\\,/g, ',');
+          currentEvent.description = cleanValue;
+          break;
+        case 'LOCATION':
+          currentEvent.location = cleanValue;
+          break;
+        case 'ORGANIZER':
+          currentEvent.organizer = cleanValue.replace(/^mailto:/i, '');
+          break;
+        case 'ATTENDEE':
+          if (!currentEvent.attendees) currentEvent.attendees = [];
+          currentEvent.attendees.push(cleanValue.replace(/^mailto:/i, ''));
+          break;
+        case 'CATEGORIES':
+          // Split on both commas and forward slashes, but keep course codes intact
+          currentEvent.categories = cleanValue
+            .split(/[,\/]/)  // Split on comma OR forward slash
+            .map((c: string) => c.trim().replace(/\\/g, ''))  // Remove backslashes
+            .filter((c: string) => c.length > 0);  // Remove empty strings
+          break;
+        case 'RESOURCES':
+          // Split on both commas and forward slashes
+          currentEvent.resources = cleanValue
+            .split(/[,\/]/)
+            .map((r: string) => r.trim().replace(/\\/g, ''))
+            .filter((r: string) => r.length > 0);
+          break;
+        case 'STATUS':
+          currentEvent.status = cleanValue;
+          break;
+        case 'CLASS':
+          currentEvent.class = cleanValue;
+          break;
+        case 'PRIORITY':
+          currentEvent.priority = cleanValue;
+          break;
+        case 'URL':
+          currentEvent.url = cleanValue;
           break;
         default:
           if (key.startsWith('DTSTART')) {
@@ -88,8 +137,12 @@ function parseICalContent(content: string) {
             currentEvent.allDay = value.length === 8; // YYYYMMDD format
           } else if (key.startsWith('DTEND')) {
             currentEvent.end = parseICalDate(value);
-          } else if (key === 'LOCATION') {
-            currentEvent.location = value;
+          } else if (key.startsWith('X-')) {
+            // Store custom X- properties
+            currentEvent[lowerKey] = cleanValue;
+          } else {
+            // Store any other unrecognized fields
+            currentEvent[lowerKey] = cleanValue;
           }
           break;
       }

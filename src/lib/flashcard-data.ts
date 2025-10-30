@@ -35,7 +35,33 @@ export type Folder = {
 
 export type FileSystemItem = Folder | Deck;
 
-export let mockFlashcardSystem: FileSystemItem[] = [
+// Save flashcard system to localStorage
+export const saveToLocalStorage = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('flashcardSystem', JSON.stringify(mockFlashcardSystem));
+    }
+  } catch (error) {
+    console.error('Failed to save flashcards to localStorage:', error);
+  }
+};
+
+// Load flashcard system from localStorage
+const loadFromLocalStorage = (): FileSystemItem[] => {
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('flashcardSystem');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load flashcards from localStorage:', error);
+  }
+  return defaultFlashcardSystem;
+};
+
+const defaultFlashcardSystem: FileSystemItem[] = [
   {
     id: 'folder-1',
     type: 'folder',
@@ -182,6 +208,7 @@ export let mockFlashcardSystem: FileSystemItem[] = [
   },
 ];
 
+export let mockFlashcardSystem: FileSystemItem[] = typeof window !== 'undefined' ? loadFromLocalStorage() : defaultFlashcardSystem;
 
 // Traversal and mutation utilities
 

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { mockFlashcardSystem, addItemToFolder, findAndMutateDecks, type FileSystemItem, type Deck, type Folder, findItemInFileSystem } from "@/lib/flashcard-data";
+import { mockFlashcardSystem, addItemToFolder, findAndMutateDecks, type FileSystemItem, type Deck, type Folder, findItemInFileSystem, saveToLocalStorage } from "@/lib/flashcard-data";
 import { findStaleCards } from "@/lib/flashcard-archive";
 import { Folder as FolderIcon, MoreHorizontal, Pencil, Copy, Trash2, FolderOpen, PlusCircle, Brain, BookCopy, FolderPlus, Move, FolderKanban, Loader2, AlertTriangle, FileText, Archive, Settings } from "lucide-react";
 import {
@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -46,6 +47,7 @@ import { validateForm, deckSchema, folderSchema } from "@/lib/validation";
 import { PDFToFlashcardsDialog } from "@/components/flashcards/pdf-to-flashcards-dialog";
 
 export default function FlashcardsPage() {
+  const router = useRouter();
   const [items, setItems] = useState<FileSystemItem[]>(mockFlashcardSystem);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ 'folder-1': true });
   const [staleCardsCount, setStaleCardsCount] = useState(0);
@@ -192,6 +194,7 @@ export default function FlashcardsPage() {
       mockFlashcardSystem.length = 0;
       mockFlashcardSystem.push(...newItems);
       setItems(newItems);
+      saveToLocalStorage();
       
       return newItems;
     });
@@ -251,29 +254,35 @@ export default function FlashcardsPage() {
   }, [selectedItem, newName, items, executeRename]);
 
   const handleOpenCreateDialog = useCallback((parentId: string | null, type: 'folder' | 'deck') => {
+    console.log('Opening create dialog:', { parentId, type });
     setNewName('');
     setCreateParentId(parentId);
     setCreateType(type);
     setValidationErrors({});
     setIsCreateDialogOpen(true);
+    console.log('Dialog should be open now');
   }, []);
 
   const handleCreateItem = useCallback(async () => {
-    if (!newName.trim()) return;
-    
-    // Validate input
-    const schema = createType === 'folder' ? folderSchema : deckSchema;
-    const validation = validateForm(schema, { name: newName.trim() });
-    
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors || {});
+    console.log('handleCreateItem called', { newName, createType });
+    if (!newName.trim()) {
+      console.log('No name provided, returning');
       return;
     }
     
+    // Simple name validation
+    if (newName.trim().length > 100) {
+      setValidationErrors({ name: 'Name must be less than 100 characters' });
+      return;
+    }
+    
+    console.log('Starting executeCreate');
     await executeCreate(async () => {
+      console.log('Inside executeCreate callback');
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      console.log('Creating new item');
       const newItem: FileSystemItem = createType === 'folder'
         ? { id: `folder-${Date.now()}`, name: newName.trim(), type: 'folder', items: [] }
         : { 
@@ -296,9 +305,16 @@ export default function FlashcardsPage() {
       mockFlashcardSystem.push(...newItems);
       setItems(newItems);
       
+      console.log('Items updated, checking if redirect needed');
+      // Redirect to edit page if creating a deck
+      if (createType === 'deck') {
+        console.log('Redirecting to edit page:', `/flashcards/${newItem.id}/edit`);
+        router.push(`/flashcards/${newItem.id}/edit`);
+      }
+      
       return newItems;
     });
-  }, [newName, createType, createParentId, items, executeCreate]);
+  }, [newName, createType, createParentId, items, executeCreate, router]);
 
   const handleCreateDeckFromPDF = useCallback(async (deckData: {
     name: string
@@ -417,6 +433,14 @@ export default function FlashcardsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {item.type === 'deck' && (
+                <Link href={`/flashcards/${item.id}/edit`}>
+                  <DropdownMenuItem>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Cards
+                  </DropdownMenuItem>
+                </Link>
+              )}
               <DropdownMenuItem onClick={() => handleAction('rename', item)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename

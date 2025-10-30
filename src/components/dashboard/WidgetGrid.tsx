@@ -112,7 +112,7 @@ export function WidgetGrid({ widgets, onWidgetChange, className }: WidgetGridPro
         containerPadding={[16, 16]}
       >
         {widgets.map(widget => (
-          <div key={widget.id} className="widget-container">
+          <div key={widget.id} className="widget-container" data-widget-id={widget.id}>
             <Card className={cn(
               "h-full transition-all duration-300 hover-gentle",
               widget.locked && "ring-2 ring-primary/20",

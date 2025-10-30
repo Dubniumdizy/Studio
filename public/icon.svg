@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#6b9d7f"/>
+  
+  <!-- Leaf shape -->
+  <path d="M256 120C200 120 150 150 150 210C150 270 200 350 256 400C312 350 362 270 362 210C362 150 312 120 256 120Z" 
+        fill="#f5ede3" 
+        stroke="#4a7c5f" 
+        stroke-width="8"/>
+  
+  <!-- Leaf vein -->
+  <path d="M256 140L256 380" 
+        stroke="#6b9d7f" 
+        stroke-width="6" 
+        stroke-linecap="round"/>
+  
+  <!-- Small leaf veins -->
+  <path d="M256 180L220 210" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+  <path d="M256 220L215 245" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+  <path d="M256 260L210 280" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+  
+  <path d="M256 180L292 210" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+  <path d="M256 220L297 245" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+  <path d="M256 260L302 280" 
+        stroke="#6b9d7f" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+</svg>

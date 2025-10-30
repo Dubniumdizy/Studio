@@ -352,117 +352,93 @@ export default function FlashcardReviewPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0">
-        <Link href="/flashcards" className={cn(buttonVariants({ variant: "ghost" }), "mb-4 inline-flex items-center gap-2")}>
+    <div className="flex flex-col h-screen">
+      <div className="flex-shrink-0 p-4">
+        <Link href="/flashcards" className={cn(buttonVariants({ variant: "ghost" }), "inline-flex items-center gap-2")}>
           <ChevronLeft className="h-4 w-4" />
           All Decks
         </Link>
-        <PageHeader 
-          title={deck.name}
-          description={`Card ${masteredCount + 1} of ${totalInitialCards}. Remaining in this round: ${reviewQueue.length}.`}
-        />
       </div>
       
-      <div className="flex-1 flex flex-col gap-4 min-h-0 py-4">
-        <div className="[perspective:1000px] flex-1 min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 px-4 pb-4">
+        {/* Card content area - takes most of the screen */}
+        <div className="flex-1 flex flex-col items-center justify-center [perspective:1000px] min-h-0 mb-6">
           <Card 
             onClick={() => setIsFlipped(!isFlipped)} 
             className={cn(
-              "w-full h-full rounded-xl transition-transform duration-700 [transform-style:preserve-3d] cursor-pointer",
+              "w-full max-w-4xl h-full rounded-xl transition-transform duration-700 [transform-style:preserve-3d] cursor-pointer shadow-xl",
               { "[transform:rotateY(180deg)]": isFlipped }
             )}
           >
             {/* Front of card */}
-            <CardContent className="absolute w-full h-full [backface-visibility:hidden] flex flex-col items-center justify-center text-center p-6">
+            <CardContent className="absolute w-full h-full [backface-visibility:hidden] overflow-y-auto flex flex-col items-center justify-center text-center p-8 gap-6">
               {currentCard.frontImage && (
-                <div className="relative w-full h-48 mb-4">
-                  <Image 
+                <div className="w-full max-w-2xl aspect-video overflow-hidden rounded-xl bg-muted shadow-md">
+                  <img 
                     src={currentCard.frontImage} 
                     alt="Flashcard front image" 
-                    layout="fill" 
-                    objectFit="contain" 
-                    className="rounded-md" 
-                    data-ai-hint={currentCard.frontImageHint}
-                    onError={(e) => {
-                      console.error('Failed to load front image:', e);
-                      // Hide the image container if image fails to load
-                      const target = e.target as HTMLImageElement;
-                      if (target.parentElement) {
-                        target.parentElement.style.display = 'none';
-                      }
-                    }}
+                    className="w-full h-full object-cover" 
                   />
                 </div>
               )}
-              <div className="text-xl md:text-2xl font-semibold">
+              <div className="text-2xl md:text-4xl font-bold leading-relaxed mt-4">
                 <Latex>{currentCard.front}</Latex>
               </div>
             </CardContent>
             {/* Back of card */}
-            <CardContent className="absolute w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col items-center justify-center text-center p-6 bg-secondary">
+            <CardContent className="absolute w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] overflow-y-auto flex flex-col items-center justify-center text-center p-8 gap-6 bg-secondary">
               {currentCard.backImage && (
-                <div className="relative w-full h-48 mb-4">
-                  <Image 
+                <div className="w-full max-w-2xl aspect-video overflow-hidden rounded-xl bg-muted shadow-md">
+                  <img 
                     src={currentCard.backImage} 
                     alt="Flashcard back image" 
-                    layout="fill" 
-                    objectFit="contain" 
-                    className="rounded-md" 
-                    data-ai-hint={currentCard.backImageHint}
-                    onError={(e) => {
-                      console.error('Failed to load back image:', e);
-                      // Hide the image container if image fails to load
-                      const target = e.target as HTMLImageElement;
-                      if (target.parentElement) {
-                        target.parentElement.style.display = 'none';
-                      }
-                    }}
+                    className="w-full h-full object-cover" 
                   />
                 </div>
               )}
-              <div className="text-xl md:text-2xl font-semibold text-secondary-foreground">
+              <div className="text-2xl md:text-4xl font-bold text-secondary-foreground leading-relaxed mt-4">
                 <Latex>{currentCard.back}</Latex>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="flex-shrink-0 space-y-4 max-w-2xl mx-auto w-full">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Session Progress</span>
-            <span className="text-sm font-medium">{masteredCount} / {totalInitialCards} mastered</span>
+        {/* Bottom section - progress and buttons */}
+        <div className="flex-shrink-0 space-y-4 max-w-4xl mx-auto w-full">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Session Progress</span>
+            <span className="font-medium">{masteredCount} / {totalInitialCards} mastered</span>
           </div>
-          <Progress value={progress} />
+          <Progress value={progress} className="h-2" />
 
           {isFlipped ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-6 pt-4">
               <Button 
                 variant="outline" 
-                className="bg-red-100 border-red-200 text-red-700 hover:bg-red-200 h-16 text-lg" 
+                className="bg-red-100 border-red-300 text-red-700 hover:bg-red-200 h-20 text-xl font-semibold" 
                 onClick={() => handleRating('again')}
               >
                 Again
               </Button>
               <Button 
                 variant="outline" 
-                className="bg-yellow-100 border-yellow-200 text-yellow-700 hover:bg-yellow-200 h-16 text-lg" 
+                className="bg-yellow-100 border-yellow-300 text-yellow-700 hover:bg-yellow-200 h-20 text-xl font-semibold" 
                 onClick={() => handleRating('good')}
               >
                 Good
               </Button>
               <Button 
                 variant="outline" 
-                className="bg-green-100 border-green-200 text-green-700 hover:bg-green-200 h-16 text-lg" 
+                className="bg-green-100 border-green-300 text-green-700 hover:bg-green-200 h-20 text-xl font-semibold" 
                 onClick={() => handleRating('easy')}
               >
                 Easy
               </Button>
             </div>
           ) : (
-            <div className="flex justify-center">
-              <Button onClick={() => setIsFlipped(true)} className="w-1/2 h-16 text-lg">
-                <RotateCcw className="mr-2 h-4 w-4" /> Flip Card
+            <div className="flex justify-center pt-4">
+              <Button onClick={() => setIsFlipped(true)} className="w-full max-w-md h-20 text-xl font-semibold">
+                <RotateCcw className="mr-2 h-5 w-5" /> Flip Card
               </Button>
             </div>
           )}

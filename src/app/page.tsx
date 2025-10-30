@@ -22,6 +22,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Settings, Leaf, Sparkles } from 'lucide-react'
 import Link from 'next/link'
+import { useDemoMode, useDemoWidgetInteractions } from '@/hooks/use-demo-mode'
+import { useWidgetPersistence, useDashboardSettings } from '@/hooks/use-widget-persistence'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Widget {
   id: string
@@ -78,93 +81,127 @@ export default function HomePage() {
   const [widgets, setWidgets] = useState<Widget[]>([])
   const [showWidgetMenu, setShowWidgetMenu] = useState(false)
   const [headerImage, setHeaderImage] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const headerHidden = useHideOnScroll();
+  const { isDemo } = useDemoMode();
+  const { activeWidget } = useDemoWidgetInteractions(isDemo);
+  const { user } = useAuth();
+  const { loadWidgets, saveWidgets, loading: widgetsLoading } = useWidgetPersistence('home');
+  const { settings, saveSettings } = useDashboardSettings();
 
-  // Load widgets from localStorage on mount
+  // Load widgets from Supabase on mount
   useEffect(() => {
-    const savedWidgets = localStorage.getItem('homeWidgets')
-    if (savedWidgets) {
-      // Only store serializable data, reconstruct JSX on load
-      const parsed: any[] = JSON.parse(savedWidgets)
-      setWidgets(parsed.map((w) => ({
-        ...w,
-        component: widgetTypes[w.type as keyof typeof widgetTypes]?.component || <div>Unknown Widget</div>
-      })))
-    } else {
-      // Default widgets
-      setWidgets([
-        {
-          id: 'calendar',
-          type: 'calendar',
-          title: 'Calendar',
-          component: <MiniCalendarWidget />,
-          locked: false,
-          minimized: false,
-          x: 0,
-          y: 0,
-          w: 4,
-          h: 3
-        },
-        {
-          id: 'goals',
-          type: 'goals',
-          title: 'Goals',
-          component: <MiniGoalsWidget />,
-          locked: false,
-          minimized: false,
-          x: 4,
-          y: 0,
-          w: 4,
-          h: 3
-        },
-        {
-          id: 'timer',
-          type: 'timer',
-          title: 'Study Timer',
-          component: <MiniStudyTimerWidget />,
-          locked: false,
-          minimized: false,
-          x: 8,
-          y: 0,
-          w: 4,
-          h: 3
-        },
-        {
-          id: 'analytics',
-          type: 'analytics',
-          title: 'Analytics',
-          component: <MiniAnalyticsWidget />,
-          locked: false,
-          minimized: false,
-          x: 0,
-          y: 3,
-          w: 6,
-          h: 3
-        },
-        {
-          id: 'ai',
-          type: 'ai',
-          title: 'AI Study Buddy',
-          component: <MiniAIFriendWidget />,
-          locked: false,
-          minimized: false,
-          x: 6,
-          y: 3,
-          w: 6,
-          h: 3
+    const loadData = async () => {
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const loadedWidgets = await loadWidgets()
+        
+        if (loadedWidgets.length > 0) {
+          // Reconstruct widgets with components
+          setWidgets(loadedWidgets.map((w) => ({
+            ...w,
+            component: widgetTypes[w.type as keyof typeof widgetTypes]?.component || <div>Unknown Widget</div>
+          })))
+        } else {
+          // Default widgets for new users
+          const defaultWidgets = [
+            {
+              id: 'calendar',
+              type: 'calendar',
+              title: 'Calendar',
+              component: <MiniCalendarWidget />,
+              locked: false,
+              minimized: false,
+              x: 0,
+              y: 0,
+              w: 4,
+              h: 3
+            },
+            {
+              id: 'goals',
+              type: 'goals',
+              title: 'Goals',
+              component: <MiniGoalsWidget />,
+              locked: false,
+              minimized: false,
+              x: 4,
+              y: 0,
+              w: 4,
+              h: 3
+            },
+            {
+              id: 'timer',
+              type: 'timer',
+              title: 'Study Timer',
+              component: <MiniStudyTimerWidget />,
+              locked: false,
+              minimized: false,
+              x: 8,
+              y: 0,
+              w: 4,
+              h: 3
+            },
+            {
+              id: 'analytics',
+              type: 'analytics',
+              title: 'Analytics',
+              component: <MiniAnalyticsWidget />,
+              locked: false,
+              minimized: false,
+              x: 0,
+              y: 3,
+              w: 6,
+              h: 3
+            },
+            {
+              id: 'ai',
+              type: 'ai',
+              title: 'AI Study Buddy',
+              component: <MiniAIFriendWidget />,
+              locked: false,
+              minimized: false,
+              x: 6,
+              y: 3,
+              w: 6,
+              h: 3
+            }
+          ]
+          setWidgets(defaultWidgets)
+          // Save default widgets to database
+          await saveWidgets(defaultWidgets)
         }
-      ])
+      } catch (error) {
+        console.error('Error loading widgets:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [])
 
-  // Save widgets to localStorage when they change
+    loadData()
+  }, [user, loadWidgets, saveWidgets])
+
+  // Load header image from settings
   useEffect(() => {
-    if (widgets.length > 0) {
-      // Only save serializable data (no JSX)
-      localStorage.setItem('homeWidgets', JSON.stringify(widgets.map(({component, ...rest}) => rest)))
+    if (settings?.header_image) {
+      setHeaderImage(settings.header_image)
     }
-  }, [widgets])
+  }, [settings])
+
+  // Auto-save widgets to Supabase when they change (debounced)
+  useEffect(() => {
+    if (!user || isLoading || widgets.length === 0) return
+
+    const timeoutId = setTimeout(() => {
+      saveWidgets(widgets)
+    }, 1000) // Debounce for 1 second
+
+    return () => clearTimeout(timeoutId)
+  }, [widgets, user, isLoading, saveWidgets])
 
   const addWidget = (type: keyof typeof widgetTypes) => {
     const widgetType = widgetTypes[type]
@@ -194,8 +231,13 @@ export default function HomePage() {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (ev) => {
-        setHeaderImage(ev.target?.result as string)
+      reader.onload = async (ev) => {
+        const imageData = ev.target?.result as string
+        setHeaderImage(imageData)
+        // Save to Supabase
+        if (user) {
+          await saveSettings({ ...settings, header_image: imageData })
+        }
       }
       reader.readAsDataURL(file)
     }

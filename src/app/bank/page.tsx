@@ -390,6 +390,36 @@ onClick={() => {
                   }
                 } catch {}
               }
+              // Handle PDF, DOC, DOCX files
+              const isPdf = (item.mime === 'application/pdf') || /\.pdf$/i.test(item.name)
+              const isDoc = /\.(doc|docx)$/i.test(item.name) || 
+                            item.mime === 'application/msword' || 
+                            item.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              
+              if (isPdf || isDoc) {
+                try {
+                  if (typeof item.content === 'string' && item.content.startsWith('data:')) {
+                    // Convert data URL to blob for proper PDF rendering
+                    fetch(item.content)
+                      .then(res => res.blob())
+                      .then(blob => {
+                        const blobUrl = URL.createObjectURL(blob);
+                        window.open(blobUrl, '_blank');
+                      })
+                      .catch(() => {
+                        toast({ title: 'Failed to open file' });
+                      });
+                  } else if (item.url) {
+                    window.open(item.url, '_blank')
+                  } else {
+                    toast({ title: `No preview available for ${item.name}`})
+                  }
+                } catch (err) {
+                  toast({ title: 'Failed to open file', description: String(err) })
+                }
+                return
+              }
+              
               // Prefer persistent data URL if present
               if (typeof item.content === 'string' && item.content.startsWith('data:')) {
                 window.open(item.content, '_blank')
@@ -450,7 +480,14 @@ onClick={() => {
               </div>
               <Button variant="outline" onClick={handleUploadClick}>
                 <HardDriveUpload className="mr-2 h-4 w-4"/> Upload
-                <input type="file" ref={uploadInputRef} onChange={handleFileChange} multiple className="hidden" />
+                <input 
+                  type="file" 
+                  ref={uploadInputRef} 
+                  onChange={handleFileChange} 
+                  multiple 
+                  accept=".pdf,.doc,.docx,image/*,text/*,.json,.csv" 
+                  className="hidden" 
+                />
               </Button>
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">

@@ -6,8 +6,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { findDeckInFileSystem, type Flashcard, type Deck, mockFlashcardSystem } from "@/lib/flashcard-data";
-import { PlusCircle, Save, Trash2, Pencil, Image as ImageIcon, FileText, ChevronLeft, Copy } from "lucide-react";
+import { findDeckInFileSystem, type Flashcard, type Deck, mockFlashcardSystem, saveToLocalStorage } from "@/lib/flashcard-data";
+import { flashcardService } from "@/lib/services/flashcards";
+import { useAuth } from "@/hooks/use-auth";
+import { PlusCircle, Save, Trash2, Pencil, Image as ImageIcon, FileText, ChevronLeft, Copy, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, useRouter, useParams } from "next/navigation";
@@ -57,11 +59,14 @@ export default function EditFlashcardDeckPage() {
   const params = useParams();
   const deckId = params.deckId as string;
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // We find the original deck once and use it to initialize state.
   const originalDeck = useMemo(() => findDeckInFileSystem(mockFlashcardSystem, deckId), [deckId]);
   
   const [deck, setDeck] = useState<Deck | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [isCardDialogOpen, setIsCardDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -154,6 +159,9 @@ export default function EditFlashcardDeckPage() {
       }
       currentLevel[deckPath[deckPath.length - 1]] = deck;
     }
+    
+    // Save to localStorage
+    saveToLocalStorage();
     
     toast({
       title: "Deck Saved!",
