@@ -96,8 +96,10 @@ function buildExampleCsv(): string {
     {name: 'History', id: 's6', goals: ['timeline', 'essay prep', 'primary sources', 'world war study']},
   ]
   
-  const startDate = new Date('2024-10-01')
-  const endDate = new Date('2024-12-31')
+  // Use last 3 months ending today for example data
+  const endDate = new Date()
+  const startDate = new Date(endDate)
+  startDate.setDate(endDate.getDate() - 90)
   
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
     const dayOfWeek = d.getDay()
@@ -196,9 +198,11 @@ export default function AnalyticsPage() {
   useEffect(()=>{
     if (useExample) { 
       setCsvText(buildExampleCsv());
-      // Also populate example calendar events
+      // Also populate example calendar events (last 90 days)
       const exampleEvents: any[] = []
-      const startDate = new Date('2024-10-01')
+      const now = new Date()
+      const startDate = new Date(now)
+      startDate.setDate(now.getDate() - 90)
       for (let i = 0; i < 90; i++) {
         const d = new Date(startDate)
         d.setDate(d.getDate() + i)
