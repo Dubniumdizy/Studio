@@ -14,7 +14,6 @@ import { Card as UiCard } from "@/components/ui/card";
 import { Input as UiInput } from "@/components/ui/input";
 import { Label as UiLabel } from "@/components/ui/label";
 import { SaveAnalyzerToBankButton } from "@/components/analyzer/SaveAnalyzerToBankButton";
-import { extractTextFromPDF } from "@/lib/pdf-text-extraction";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts'
@@ -252,41 +251,23 @@ export default function ExamAnalyzerPage() {
 
   const extractPdfText = async (file: File): Promise<string | null> => {
     try {
-      // Use pdfjs-dist for proper browser-based PDF text extraction
-      const pdfjsLib = await import('pdfjs-dist');
+      // Use server-side PDF extraction API
+      const formData = new FormData();
+      formData.append('file', file);
       
-      // Set up worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const response = await fetch('/api/extract-pdf-text', {
+        method: 'POST',
+        body: formData,
+      });
       
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdf = await loadingTask.promise;
-      
-      let fullText = '';
-      
-      // Extract text from all pages
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n\n';
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('PDF extraction API error:', error);
+        return null;
       }
       
-      const cleanedText = fullText.trim();
-      
-      // Filter out PDF metadata/structure keywords
-      const hasRealContent = cleanedText.length > 100 && 
-        !cleanedText.toLowerCase().includes('endstream') &&
-        !cleanedText.toLowerCase().includes('endobj');
-      
-      if (hasRealContent) {
-        return cleanedText;
-      }
-      
-      console.warn('PDF extraction returned metadata instead of content');
-      return null;
+      const data = await response.json();
+      return data.text || null;
     } catch (error) {
       console.error('PDF extraction failed:', error);
       return null;
