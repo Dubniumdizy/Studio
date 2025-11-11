@@ -6,7 +6,6 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
-import { DemoModeToggle } from '@/components/demo-mode-toggle';
 
 function PageLoading() {
   return (
@@ -52,7 +51,6 @@ export function AppRoot({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <AuthGate>{children}</AuthGate>
       <Toaster />
-      <DemoModeToggle />
     </AuthProvider>
   );
 }
