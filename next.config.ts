@@ -50,6 +50,26 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
 
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    // Ignore optional Genkit dependencies that aren't needed
+    config.externals = config.externals || [];
+    if (isServer) {
+      config.externals.push({
+        '@opentelemetry/exporter-jaeger': 'commonjs @opentelemetry/exporter-jaeger',
+        '@genkit-ai/firebase': 'commonjs @genkit-ai/firebase',
+      });
+    }
+    
+    // Fallback for missing modules in browser
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@opentelemetry/exporter-jaeger': false,
+      '@genkit-ai/firebase': false,
+    };
+    
+    return config;
+  },
 
   // Performance optimizations
   poweredByHeader: false,
