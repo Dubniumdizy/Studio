@@ -1,6 +1,6 @@
 "use client";
 
-import { analyzeExam, AnalyzeExamOutput } from "@/ai/flows/exam-analyzer";
+import type { AnalyzeExamOutput } from "@/ai/flows/exam-analyzer";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -260,6 +260,21 @@ export default function ExamAnalyzerPage() {
     }
   };
 
+  const analyzeExamViaAPI = async (exams: any[]): Promise<AnalyzeExamOutput> => {
+    const response = await fetch('/api/ai/flows/exam-analyzer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exams })
+    });
+    
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || `API error: ${response.status}`);
+    }
+    
+    return response.json();
+  };
+
   const buildLocalAnalysis = (texts: string[], names: string[]): AnalyzeExamOutput => {
     const all = (texts || []).join('\n').toLowerCase();
     const tokens = all.split(/[^a-zA-Z0-9_]+/).filter(t=>t.length>=3);
@@ -319,7 +334,7 @@ export default function ExamAnalyzerPage() {
         setExtractedTexts(localTexts);
         setFileNames(localNames);
 
-        const result = await analyzeExam({ exams });
+        const result = await analyzeExamViaAPI(exams);
         if (result && (result.commonThemes || '').trim()) {
           setAnalysisResult(result);
         } else {
@@ -329,10 +344,11 @@ export default function ExamAnalyzerPage() {
         }
       } catch (e) {
         // Server action failed (offline/too large). Fallback to local keyword-based analysis
+        console.error('Exam analysis error:', e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        setError(`AI analysis failed: ${errorMsg}. Using local fallback.`);
         const fallback = buildLocalAnalysis(extractedTexts, fileNames);
         setAnalysisResult(fallback);
-        setError(null);
-        console.error(e);
       }
     });
   };

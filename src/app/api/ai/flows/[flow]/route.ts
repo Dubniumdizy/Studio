@@ -18,13 +18,13 @@ function json(data: any, init?: ResponseInit) {
   });
 }
 
-export async function POST(req: NextRequest, context: { params: { flow: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ flow: string }> }) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!key) {
     return json({ error: 'GEMINI_API_KEY or GOOGLE_API_KEY missing on server' }, { status: 500 });
   }
 
-  const { flow } = context.params;
+  const { flow } = await context.params;
   let body: any = null;
   try {
     body = await req.json();
