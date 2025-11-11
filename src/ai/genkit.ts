@@ -1,5 +1,5 @@
 import {genkit} from 'genkit';
-import {googleAI, gemini15Flash} from '@genkit-ai/googleai';
+import {googleAI, gemini25Flash} from '@genkit-ai/googleai';
 
 // Verify API key is available
 if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
@@ -10,5 +10,5 @@ export const ai = genkit({
   plugins: [googleAI({
     apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
   })],
-  model: gemini15Flash,
+  model: gemini25Flash, // Using Gemini 2.5 Flash (1.5 is deprecated)
 });
