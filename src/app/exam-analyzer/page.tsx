@@ -252,8 +252,41 @@ export default function ExamAnalyzerPage() {
 
   const extractPdfText = async (file: File): Promise<string | null> => {
     try {
-      const extracted = await extractTextFromPDF(file);
-      return extracted.fullText || null;
+      // Use pdfjs-dist for proper browser-based PDF text extraction
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Set up worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      let fullText = '';
+      
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      }
+      
+      const cleanedText = fullText.trim();
+      
+      // Filter out PDF metadata/structure keywords
+      const hasRealContent = cleanedText.length > 100 && 
+        !cleanedText.toLowerCase().includes('endstream') &&
+        !cleanedText.toLowerCase().includes('endobj');
+      
+      if (hasRealContent) {
+        return cleanedText;
+      }
+      
+      console.warn('PDF extraction returned metadata instead of content');
+      return null;
     } catch (error) {
       console.error('PDF extraction failed:', error);
       return null;
