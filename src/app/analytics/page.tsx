@@ -84,24 +84,72 @@ function pearson(x: number[], y: number[]) {
 }
 function buildExampleCsv(): string {
   const header = 'date,started_at,ended_at,user_id,subject,subject_id,duration_minutes,duration_seconds,energy_before,goal,goal_achievement,happiness,energy_after,used_solutions,hardness,next_plan,forest_trees' + '\r\n'
-  const rows = [
-    // Week 1 - various goal achievements to show the analytics
-    ['2025-09-15','2025-09-15T07:30:00Z','2025-09-15T08:30:00Z','u1','math','s1',60,3600,3,'review LA',0.5,4,4,'no',2,'chapter 5 ex',3],
-    ['2025-09-15','2025-09-15T16:00:00Z','2025-09-15T17:15:00Z','u1','physics','s2',75,4500,2,'hw set',0,3,3,'yes',4,'lab prep',2],
-    ['2025-09-16','2025-09-16T13:00:00Z','2025-09-16T14:00:00Z','u1','chemistry','s3',60,3600,2,'notes',1,4,4,'no',2,'read notes',4],
-    ['2025-09-17','2025-09-17T20:00:00Z','2025-09-17T21:30:00Z','u1','math','s1',90,5400,3,'old exam',1,5,5,'yes',3,'next exam',5],
-    ['2025-09-18','2025-09-18T09:00:00Z','2025-09-18T09:45:00Z','u1','physics','s2',45,2700,4,'repetition',0,2,3,'no',4,'focus again',2],
-    ['2025-09-19','2025-09-19T15:00:00Z','2025-09-19T16:30:00Z','u1','english','s4',90,5400,3,'essay',0.5,4,4,'no',3,'revise draft',4],
-    ['2025-09-20','2025-09-20T10:30:00Z','2025-09-20T12:00:00Z','u1','biology','s5',90,5400,4,'lab prep',1,4,5,'yes',3,'microscope review',5],
-    // Week 2
-    ['2025-09-22','2025-09-22T06:45:00Z','2025-09-22T07:30:00Z','u1','math','s1',45,2700,2,'morning warm-up',0.5,3,4,'no',2,'quick recap',3],
-    ['2025-09-23','2025-09-23T18:00:00Z','2025-09-23T19:30:00Z','u1','physics','s2',90,5400,2,'problem set',0,2,3,'yes',4,'retry problems',2],
-    ['2025-09-24','2025-09-24T12:15:00Z','2025-09-24T13:15:00Z','u1','chemistry','s3',60,3600,3,'notes',0.5,4,4,'no',3,'summarize chapter',4],
-    ['2025-09-25','2025-09-25T20:30:00Z','2025-09-25T22:00:00Z','u1','math','s1',90,5400,3,'old exam',1,5,5,'yes',3,'mock exam',6],
-    ['2025-09-26','2025-09-26T09:30:00Z','2025-09-26T10:15:00Z','u1','physics','s2',45,2700,4,'repetition',0.5,3,4,'no',3,'lab notes',3],
-    ['2025-09-27','2025-09-27T14:00:00Z','2025-09-27T15:30:00Z','u1','english','s4',90,5400,2,'reading',1,4,3,'no',2,'write review',3],
-    ['2025-09-28','2025-09-28T11:00:00Z','2025-09-28T12:30:00Z','u1','biology','s5',90,5400,3,'flashcards',0.5,4,4,'yes',3,'next deck',4],
+  
+  // Generate 3 months of comprehensive study data (90 days with 2-3 sessions per day)
+  const rows: any[] = []
+  const subjects = [
+    {name: 'Math', id: 's1', goals: ['review LA', 'old exam', 'problem set', 'mock exam', 'integration', 'derivatives']},
+    {name: 'Physics', id: 's2', goals: ['hw set', 'lab prep', 'problem set', 'mechanics', 'thermodynamics', 'optics']},
+    {name: 'Chemistry', id: 's3', goals: ['notes', 'reactions', 'lab report', 'organic chem', 'stoichiometry']},
+    {name: 'English', id: 's4', goals: ['essay', 'reading', 'analysis', 'grammar', 'literature review']},
+    {name: 'Biology', id: 's5', goals: ['lab prep', 'flashcards', 'genetics', 'ecology', 'cell biology']},
+    {name: 'History', id: 's6', goals: ['timeline', 'essay prep', 'primary sources', 'world war study']},
   ]
+  
+  const startDate = new Date('2024-10-01')
+  const endDate = new Date('2024-12-31')
+  
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay()
+    // Skip some Sundays (rest days)
+    if (dayOfWeek === 0 && Math.random() > 0.3) continue
+    
+    // 2-4 sessions per day with variation
+    const numSessions = dayOfWeek === 6 ? Math.floor(Math.random() * 2) + 1 : Math.floor(Math.random() * 3) + 2
+    
+    for (let s = 0; s < numSessions; s++) {
+      const subject = subjects[Math.floor(Math.random() * subjects.length)]
+      const duration = [30, 45, 60, 75, 90, 120][Math.floor(Math.random() * 6)]
+      const hour = s === 0 ? 7 + Math.floor(Math.random() * 3) : 
+                   s === 1 ? 13 + Math.floor(Math.random() * 3) :
+                   s === 2 ? 18 + Math.floor(Math.random() * 4) : 9 + Math.floor(Math.random() * 12)
+      
+      const startTime = new Date(d)
+      startTime.setHours(hour, Math.floor(Math.random() * 60), 0, 0)
+      const endTime = new Date(startTime)
+      endTime.setMinutes(endTime.getMinutes() + duration)
+      
+      const energyBefore = Math.floor(Math.random() * 3) + 2 // 2-4
+      const energyAfter = Math.max(1, Math.min(5, energyBefore + (Math.floor(Math.random() * 3) - 1))) // ±1
+      const happiness = Math.floor(Math.random() * 3) + 2 // 2-4
+      const hardness = Math.floor(Math.random() * 4) + 1 // 1-4
+      const goalAchievement = Math.random() < 0.7 ? (Math.random() < 0.5 ? 1 : 0.5) : 0
+      const usedSolutions = Math.random() < 0.3 ? 'yes' : 'no'
+      const forestTrees = Math.floor(Math.random() * 5) + 2 // 2-6
+      const goal = subject.goals[Math.floor(Math.random() * subject.goals.length)]
+      
+      rows.push([
+        d.toISOString().split('T')[0],
+        startTime.toISOString(),
+        endTime.toISOString(),
+        'u1',
+        subject.name,
+        subject.id,
+        duration,
+        duration * 60,
+        energyBefore,
+        goal,
+        goalAchievement,
+        happiness,
+        energyAfter,
+        usedSolutions,
+        hardness,
+        'continue studying',
+        forestTrees
+      ])
+    }
+  }
+  
   const esc = (v:any)=>{ const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s }
   return header + rows.map(r=> r.map(esc).join(',')).join('\r\n') + '\r\n'
 }
