@@ -83,7 +83,7 @@ function pearson(x: number[], y: number[]) {
   return den ? num / den : 0
 }
 function buildExampleCsv(): string {
-  const header = 'date,started_at,ended_at,user_id,subject,subject_id,duration_minutes,duration_seconds,energy_before,goal,goal_achievement,happiness,energy_after,used_solutions,hardness,next_plan,forest_trees' + '\r\n'
+  const header = 'date,started_at,ended_at,user_id,subject,subject_id,duration_minutes,duration_seconds,energy_before,goal,goal_achievement,happiness,energy_after,breaks,used_solutions,hardness,next_plan,forest_trees' + '\r\n'
   
   // Generate 3 months of comprehensive study data (90 days with 2-3 sessions per day)
   const rows: any[] = []
@@ -130,6 +130,11 @@ function buildExampleCsv(): string {
       const forestTrees = Math.floor(Math.random() * 5) + 2 // 2-6
       const goal = subject.goals[Math.floor(Math.random() * subject.goals.length)]
       
+      // Generate realistic breaks
+      const breakTypes = ['drink water', 'snack', 'walk', 'stretch', 'phone scroll', 'social media', 'music', 'nap', 'coffee', 'tea']
+      const numBreaks = duration >= 60 ? Math.floor(Math.random() * 3) + 1 : (Math.random() < 0.5 ? 1 : 0)
+      const breaks = numBreaks > 0 ? Array.from({length: numBreaks}, () => breakTypes[Math.floor(Math.random() * breakTypes.length)]).join(';') : ''
+      
       rows.push([
         d.toISOString().split('T')[0],
         startTime.toISOString(),
@@ -144,6 +149,7 @@ function buildExampleCsv(): string {
         goalAchievement,
         happiness,
         energyAfter,
+        breaks,
         usedSolutions,
         hardness,
         'continue studying',
