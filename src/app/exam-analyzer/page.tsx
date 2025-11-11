@@ -14,6 +14,7 @@ import { Card as UiCard } from "@/components/ui/card";
 import { Input as UiInput } from "@/components/ui/input";
 import { Label as UiLabel } from "@/components/ui/label";
 import { SaveAnalyzerToBankButton } from "@/components/analyzer/SaveAnalyzerToBankButton";
+import { extractTextFromPDF } from "@/lib/pdf-text-extraction";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts'
@@ -251,23 +252,10 @@ export default function ExamAnalyzerPage() {
 
   const extractPdfText = async (file: File): Promise<string | null> => {
     try {
-      // Attempt client-side PDF text extraction using pdfjs-dist (lazy import to avoid bundler resolution)
-      const dynImport: any = (eval('import'));
-      const pdfjs = await dynImport('pdfjs-dist/build/pdf');
-      // @ts-ignore
-      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const ab = await file.arrayBuffer();
-      // @ts-ignore
-      const doc = await pdfjs.getDocument({ data: ab }).promise;
-      let fullText = '';
-      for (let p = 1; p <= doc.numPages; p++) {
-        const page = await doc.getPage(p);
-        const content = await page.getTextContent();
-        const strings = content.items.map((it: any) => it.str || '').filter(Boolean);
-        fullText += strings.join(' ') + '\n\n';
-      }
-      return fullText.trim() || null;
-    } catch {
+      const extracted = await extractTextFromPDF(file);
+      return extracted.fullText || null;
+    } catch (error) {
+      console.error('PDF extraction failed:', error);
       return null;
     }
   };
