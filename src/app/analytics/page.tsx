@@ -194,7 +194,57 @@ export default function AnalyticsPage() {
   }
 
   useEffect(()=>{
-    if (useExample) { setCsvText(buildExampleCsv()); return }
+    if (useExample) { 
+      setCsvText(buildExampleCsv());
+      // Also populate example calendar events
+      const exampleEvents: any[] = []
+      const startDate = new Date('2024-10-01')
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(startDate)
+        d.setDate(d.getDate() + i)
+        if (Math.random() > 0.2) { // 80% of days have events
+          exampleEvents.push({
+            id: `ex-${i}`,
+            title: ['Math Study', 'Physics Lab', 'Chemistry Review', 'English Essay', 'Biology Research'][Math.floor(Math.random() * 5)],
+            start: d.toISOString(),
+            end: new Date(d.getTime() + 3600000).toISOString(),
+            energyLevel: Math.floor(Math.random() * 3) + 2,
+            tags: [['Math', 'STEM'], ['Physics', 'Lab'], ['Chemistry'], ['English', 'Writing'], ['Biology', 'Research']][Math.floor(Math.random() * 5)],
+            workType: ['Study', 'Lab', 'Review', 'Assignment'][Math.floor(Math.random() * 4)],
+            moodAfter: Math.floor(Math.random() * 3) + 2,
+            goalAchievement: Math.random() < 0.7 ? (Math.random() < 0.5 ? 1 : 0.5) : 0,
+          })
+        }
+      }
+      setCalendarEvents(exampleEvents.map(ev => ({
+        ...ev,
+        start: new Date(ev.start),
+        end: ev.end ? new Date(ev.end) : undefined,
+      })))
+      
+      // Populate example subject data
+      const exampleSubjects = ['Math', 'Physics', 'Chemistry', 'English', 'Biology', 'History']
+      const exampleAvgs = exampleSubjects.map(s => ({
+        subject: s,
+        avgConfidence: +(2 + Math.random() * 2).toFixed(2), // 2-4
+        avgImportance: +(2 + Math.random() * 2).toFixed(2), // 2-4
+      }))
+      setSubjectAvgs(exampleAvgs)
+      
+      const exampleVocabMap: Record<string, any[]> = {}
+      exampleSubjects.forEach(s => {
+        const concepts = Array.from({ length: 20 }, (_, i) => ({
+          concept: `${s} Concept ${i + 1}`,
+          confidence: +(1 + Math.random() * 4).toFixed(2),
+          importance: +(1 + Math.random() * 4).toFixed(2),
+        }))
+        exampleVocabMap[s] = concepts
+      })
+      setSubjectVocabMap(exampleVocabMap)
+      setSubjectNames(exampleSubjects)
+      if (!selectedVocabSubject) setSelectedVocabSubject('Math')
+      return
+    }
     try {
       const raw = localStorage.getItem('bankData')
       if (!raw) { setCsvText(''); return }
