@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
+import * as pdf from 'pdf-parse';
 
 export const runtime = 'nodejs';
 

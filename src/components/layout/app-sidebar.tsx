@@ -33,7 +33,8 @@ import {
   Sparkles,
   Target,
   Timer,
-  BookOpen
+  BookOpen,
+  Users
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,7 @@ export function AppSidebar() {
     'mock-exams': true,
     'exam-analyzer': true,
     'study-buddy': true,
+    'community': true,
   });
 
   useEffect(() => {
@@ -103,7 +105,13 @@ export function AppSidebar() {
     try {
       const saved = localStorage.getItem('sidebarVisibility');
       if (saved) {
-        setSidebarVisibility(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Auto-migrate: add community if it doesn't exist
+        if (!('community' in parsed)) {
+          parsed.community = true;
+          localStorage.setItem('sidebarVisibility', JSON.stringify(parsed));
+        }
+        setSidebarVisibility(parsed);
       }
     } catch (error) {
       console.error('Failed to load sidebar visibility:', error);
@@ -272,14 +280,23 @@ export function AppSidebar() {
           </CollapsibleSection>
         )}
 
-        {sidebarVisibility['study-buddy'] && (
-          <CollapsibleSection title="Help" icon={<Bot size={16} />}>
+        {(sidebarVisibility['study-buddy'] || sidebarVisibility['community']) && (
+          <CollapsibleSection title="Help" icon={<HelpCircle size={16} />}>
               <SidebarMenu>
-                  <SidebarMenuItem>
-                    <NavLink href="/study-buddy" icon={<Bot />} tooltip="Study Buddy">
-                        Study Buddy
-                    </NavLink>
-                  </SidebarMenuItem>
+                  {sidebarVisibility['study-buddy'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/study-buddy" icon={<Bot />} tooltip="Study Buddy">
+                          Study Buddy
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
+                  {sidebarVisibility['community'] && (
+                    <SidebarMenuItem>
+                      <NavLink href="/help/community" icon={<Users />} tooltip="Community">
+                          Community
+                      </NavLink>
+                    </SidebarMenuItem>
+                  )}
               </SidebarMenu>
           </CollapsibleSection>
         )}

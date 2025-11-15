@@ -25,6 +25,26 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ArchivePage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
+      <Link href="/flashcards" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "absolute top-4 left-4 gap-2")}>
+        <ChevronLeft className="h-4 w-4" />
+        All Decks
+      </Link>
+      <div className="text-center space-y-4 max-w-md">
+        <Archive className="w-16 h-16 text-green-600 mx-auto" />
+        <h1 className="text-4xl font-bold text-green-700">Coming Soon</h1>
+        <p className="text-lg text-muted-foreground">
+          The Archived Cards feature is currently under development. Soon you'll be able to manage and review your old flashcards!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* Original implementation preserved for future use
+
+function ArchivePageOriginal() {
   const { toast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -204,3 +224,4 @@ export default function ArchivePage() {
     </div>
   );
 }
+*/

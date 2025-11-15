@@ -137,6 +137,7 @@ export default function SettingsPage() {
     'mock-exams': true,
     'exam-analyzer': true,
     'study-buddy': true,
+    'community': true,
   })
 
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
@@ -162,7 +163,12 @@ export default function SettingsPage() {
       }
 
       if (savedSidebarVisibility) {
-        setSidebarVisibility(JSON.parse(savedSidebarVisibility))
+        const parsed = JSON.parse(savedSidebarVisibility)
+        // Auto-migrate: add community if it doesn't exist
+        if (!('community' in parsed)) {
+          parsed.community = true
+        }
+        setSidebarVisibility(parsed)
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -601,6 +607,7 @@ export default function SettingsPage() {
                   { id: 'mock-exams', label: 'Mock Exams', icon: '📋', section: 'Exam Prep' },
                   { id: 'exam-analyzer', label: 'Exam Analyzer', icon: '🔍', section: 'Exam Prep' },
                   { id: 'study-buddy', label: 'Study Buddy', icon: '🤖', section: 'Help' },
+                  { id: 'community', label: 'Community', icon: '👥', section: 'Help' },
                 ].map((page) => (
                   <div key={page.id} className="flex items-center justify-between p-3 rounded-lg border border-green-200 hover:bg-green-50">
                     <div className="flex items-center gap-3 flex-1">

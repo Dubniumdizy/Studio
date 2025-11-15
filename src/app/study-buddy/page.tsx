@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Loader2, Sparkles } from "lucide-react";
+import { Bot, Loader2, Sparkles, Paperclip, X, Save } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const loadingMessages = [
   "Scanning your problem...",
@@ -28,9 +29,10 @@ export default function StudyBuddyPage() {
   const [isPending, startTransition] = useTransition();
   const [recommendations, setRecommendations] = useState<StudyBuddyOutput | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
   const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (isPending) {
@@ -70,10 +72,10 @@ export default function StudyBuddyPage() {
     const formData = new FormData(event.currentTarget);
     const query = (formData.get("query") as string) || '';
 
-    if (!query.trim() && !imageFile) {
+    if (!query.trim() && uploadedFiles.length === 0) {
       toast({
-        title: "Provide a question or image",
-        description: "Type your question or attach an image with the problem.",
+        title: "Provide a question or file",
+        description: "Type your question or attach files (images, PDFs, documents) with the problem.",
         variant: "destructive",
       });
       return;
@@ -81,24 +83,60 @@ export default function StudyBuddyPage() {
     
     setRecommendations(null);
     startTransition(async () => {
-      let imageDataUri: string | undefined
-      if (imageFile) {
-        try {
-          imageDataUri = await compressImageFileToDataUrl(imageFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.85, mime: 'image/jpeg' })
-        } catch {
+      let contextText = query;
+      let imageDataUri: string | undefined;
+      
+      // Process uploaded files
+      for (const file of uploadedFiles) {
+        const fileType = file.type;
+        
+        // Handle images
+        if (fileType.startsWith('image/')) {
           try {
-            imageDataUri = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader()
-              reader.onload = () => resolve(reader.result as string)
-              reader.onerror = (e) => reject(e)
-              reader.readAsDataURL(imageFile!)
-            })
-          } catch {}
+            imageDataUri = await compressImageFileToDataUrl(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85, mime: 'image/jpeg' });
+          } catch {
+            try {
+              imageDataUri = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+              });
+            } catch {}
+          }
+        }
+        // Handle PDFs
+        else if (fileType === 'application/pdf' || file.name.endsWith('.pdf')) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/extract-pdf-text', {
+              method: 'POST',
+              body: formData,
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.text) {
+                contextText += `\n\n[Content from ${file.name}]:\n${data.text.slice(0, 10000)}`;
+              }
+            }
+          } catch (e) {
+            console.error('PDF extraction failed:', e);
+          }
+        }
+        // Handle text files
+        else if (fileType.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+          try {
+            const text = await file.text();
+            contextText += `\n\n[Content from ${file.name}]:\n${text.slice(0, 10000)}`;
+          } catch (e) {
+            console.error('Text file reading failed:', e);
+          }
         }
       }
       const attempt = async (tries: number): Promise<StudyBuddyOutput | null> => {
         try {
-          return await getStudyBuddyRecommendations({ query, imageDataUri });
+          return await getStudyBuddyRecommendations({ query: contextText, imageDataUri });
         } catch (e: any) {
           const msg = (e?.message || '').toString()
           if (tries > 0 && (/503|overloaded|Failed to fetch/i.test(msg))) {
@@ -117,13 +155,78 @@ export default function StudyBuddyPage() {
     });
   };
   
-
+  const handleSaveToBank = () => {
+    if (!recommendations) return;
+    
+    try {
+      // Create a JSON file with the answer
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const fileName = `study-buddy-${timestamp}.json`;
+      
+      const dataToSave = {
+        timestamp: new Date().toISOString(),
+        answer: recommendations.answer,
+        savedFrom: "Study Buddy"
+      };
+      
+      // Get current bank data from localStorage
+      const raw = localStorage.getItem('bankData');
+      let bankData = raw ? JSON.parse(raw) : [];
+      
+      // Find the home folder
+      const homeFolder = bankData.find((item: any) => item.id === 'home' && item.type === 'folder');
+      
+      if (homeFolder) {
+        // Create the file object
+        const newFile = {
+          id: `file-${Date.now()}-${Math.random()}`,
+          name: fileName,
+          type: 'file',
+          mime: 'application/json',
+          content: JSON.stringify(dataToSave, null, 2)
+        };
+        
+        // Add to home folder
+        homeFolder.items = homeFolder.items || [];
+        homeFolder.items.unshift(newFile);
+        
+        // Save back to localStorage
+        localStorage.setItem('bankData', JSON.stringify(bankData));
+        
+        // Dispatch events to update Bank page if open
+        window.dispatchEvent(new CustomEvent('bankDataUpdated', { detail: bankData }));
+        try {
+          const bc = new BroadcastChannel('bank-updates');
+          bc.postMessage({ type: 'bankDataUpdated', payload: bankData });
+          bc.close();
+        } catch {}
+        
+        toast({
+          title: "Saved to Bank",
+          description: `Answer saved as ${fileName} in your Bank/Home folder`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not find Bank home folder",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save to bank:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save answer to Bank",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div>
       <PageHeader
         title="Math/Study Buddy"
-        description="Ask a question and/or attach an image of the problem to get a step-by-step LaTeX solution."
+        description="Ask a question and attach files (images, PDFs, documents) to get step-by-step solutions and study help."
       />
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -137,11 +240,48 @@ export default function StudyBuddyPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <Label htmlFor="query">Your problem/question</Label>
-                  <Textarea id="query" name="query" placeholder="Describe the problem. Use $...$ or $$...$$ for math. You can also attach an image below." />
+                  <Textarea id="query" name="query" placeholder="Describe the problem. Use $...$ or $$...$$ for math. You can also attach files below (images, PDFs, text documents)." />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="questionImage">Optional: attach an image (problem/notes)</Label>
-                  <Input id="questionImage" name="questionImage" type="file" accept="image/*" onChange={(e)=> setImageFile(e.target.files?.[0] || null)} />
+                <div className="space-y-2">
+                  <Label htmlFor="attachments">
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Attach files (images, PDFs, documents)
+                    </div>
+                  </Label>
+                  <Input 
+                    id="attachments" 
+                    name="attachments" 
+                    type="file" 
+                    accept="image/*,.pdf,.txt,.md,application/pdf,text/plain" 
+                    multiple
+                    onChange={(e)=> {
+                      const files = Array.from(e.target.files || []);
+                      setUploadedFiles(prev => [...prev, ...files]);
+                    }} 
+                  />
+                  {uploadedFiles.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {uploadedFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Paperclip className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== idx))}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" disabled={isPending} className="w-full">
                   {isPending ? (
@@ -171,14 +311,27 @@ export default function StudyBuddyPage() {
             <Card className="flex flex-col items-center justify-center h-96 bg-muted/30 border-dashed">
                 <Bot className="h-16 w-16 text-muted-foreground"/>
                 <h3 className="mt-4 text-lg font-semibold">Ready to solve a problem?</h3>
-                <p className="text-muted-foreground text-sm">Describe it or attach an image, then press Solve.</p>
+                <p className="text-muted-foreground text-sm">Describe it or attach files (images, PDFs, documents), then press Solve.</p>
             </Card>
           )}
           {recommendations && (
             <Card>
               <CardHeader>
-                <CardTitle>Solution</CardTitle>
-                <CardDescription>Step-by-step answer with LaTeX and prerequisites.</CardDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>Solution</CardTitle>
+                    <CardDescription>Step-by-step answer with LaTeX and prerequisites.</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveToBank}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save to Bank
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">

@@ -195,6 +195,10 @@ export default function AnalyticsPage() {
   const [customEnd, setCustomEnd] = useState<string>(()=>{
     try { return localStorage.getItem('analytics_range_end') || '' } catch { return '' }
   })
+  // Happiness over time range
+  const [happinessRange, setHappinessRange] = useState<'week'|'month'|'year'>(()=>{
+    try { return (localStorage.getItem('analytics_happiness_range') as any) || 'month' } catch { return 'month' }
+  })
   const [refreshKey, setRefreshKey] = useState(0)
 
   const refreshCsvData = () => {
@@ -209,23 +213,113 @@ export default function AnalyticsPage() {
       const now = new Date()
       const startDate = new Date(now)
       startDate.setDate(now.getDate() - 90)
+      
+      // Add comprehensive study events with proper tags and durations
       for (let i = 0; i < 90; i++) {
         const d = new Date(startDate)
         d.setDate(d.getDate() + i)
-        if (Math.random() > 0.2) { // 80% of days have events
+        const dayOfWeek = d.getDay()
+        
+        // Skip some Sundays (rest days)
+        if (dayOfWeek === 0 && Math.random() > 0.3) continue
+        
+        // 2-4 study sessions per day with variation
+        const numSessions = dayOfWeek === 6 ? Math.floor(Math.random() * 2) + 1 : Math.floor(Math.random() * 3) + 2
+        
+        for (let s = 0; s < numSessions; s++) {
+          const subjects = ['Math', 'Physics', 'Chemistry', 'English', 'Biology', 'History']
+          const subject = subjects[Math.floor(Math.random() * subjects.length)]
+          const duration = [30, 45, 60, 75, 90, 120][Math.floor(Math.random() * 6)] * 60000 // in ms
+          const hour = s === 0 ? 7 + Math.floor(Math.random() * 3) : 
+                       s === 1 ? 13 + Math.floor(Math.random() * 3) :
+                       s === 2 ? 18 + Math.floor(Math.random() * 4) : 9 + Math.floor(Math.random() * 12)
+          
+          const startTime = new Date(d)
+          startTime.setHours(hour, Math.floor(Math.random() * 60), 0, 0)
+          const endTime = new Date(startTime.getTime() + duration)
+          
           exampleEvents.push({
-            id: `ex-${i}`,
-            title: ['Math Study', 'Physics Lab', 'Chemistry Review', 'English Essay', 'Biology Research'][Math.floor(Math.random() * 5)],
-            start: d.toISOString(),
-            end: new Date(d.getTime() + 3600000).toISOString(),
+            id: `ex-study-${i}-${s}`,
+            title: `${subject} Study`,
+            start: startTime.toISOString(),
+            end: endTime.toISOString(),
             energyLevel: Math.floor(Math.random() * 3) + 2,
-            tags: [['Math', 'STEM'], ['Physics', 'Lab'], ['Chemistry'], ['English', 'Writing'], ['Biology', 'Research']][Math.floor(Math.random() * 5)],
-            workType: ['Study', 'Lab', 'Review', 'Assignment'][Math.floor(Math.random() * 4)],
+            tags: ['study', subject],
+            workType: 'Study',
             moodAfter: Math.floor(Math.random() * 3) + 2,
             goalAchievement: Math.random() < 0.7 ? (Math.random() < 0.5 ? 1 : 0.5) : 0,
           })
+          
+          // Add breaks between sessions (some sessions)
+          if (Math.random() < 0.5) {
+            const breakStart = new Date(endTime.getTime() + 5 * 60000) // 5 min after
+            const breakDuration = [10, 15, 20, 30][Math.floor(Math.random() * 4)] * 60000
+            const breakEnd = new Date(breakStart.getTime() + breakDuration)
+            const breakTypes = ['drink water', 'snack', 'walk', 'stretch', 'coffee', 'tea']
+            const breakType = breakTypes[Math.floor(Math.random() * breakTypes.length)]
+            
+            exampleEvents.push({
+              id: `ex-break-${i}-${s}`,
+              title: breakType,
+              start: breakStart.toISOString(),
+              end: breakEnd.toISOString(),
+              energyLevel: Math.floor(Math.random() * 2) + 3, // 3-4
+              tags: ['break'],
+              workType: 'break',
+              moodAfter: Math.floor(Math.random() * 2) + 3,
+            })
+          }
+        }
+        
+        // Add some other activity types for category pie chart
+        if (Math.random() < 0.4) {
+          const activityTypes = [
+            { title: 'Exercise', tags: ['health'], duration: 45 },
+            { title: 'Meal prep', tags: ['chores'], duration: 30 },
+            { title: 'Social time', tags: ['social'], duration: 60 },
+            { title: 'Important meeting', tags: ['important'], duration: 40 },
+          ]
+          const activity = activityTypes[Math.floor(Math.random() * activityTypes.length)]
+          const activityStart = new Date(d)
+          activityStart.setHours(17 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60), 0, 0)
+          const activityEnd = new Date(activityStart.getTime() + activity.duration * 60000)
+          
+          exampleEvents.push({
+            id: `ex-activity-${i}`,
+            title: activity.title,
+            start: activityStart.toISOString(),
+            end: activityEnd.toISOString(),
+            energyLevel: Math.floor(Math.random() * 3) + 2,
+            tags: activity.tags,
+            moodAfter: Math.floor(Math.random() * 3) + 2,
+          })
         }
       }
+      
+      // Add diary entries for throwback dates (yesterday, week ago, month ago, year ago)
+      const diaryDates = [1, 7, 30, 365]
+      const diaryPrompts = [
+        'Feeling productive today! Finished all my study goals and even had time for a workout.',
+        'Struggled with focus this morning but recovered after lunch. Chemistry is getting easier!',
+        'Amazing study session at the library. Found a great study group for Physics.',
+        'Feeling overwhelmed with all the exams coming up. Need to create a better schedule.',
+      ]
+      
+      diaryDates.forEach((daysAgo, idx) => {
+        const diaryDate = new Date(now)
+        diaryDate.setDate(diaryDate.getDate() - daysAgo)
+        diaryDate.setHours(20, 0, 0, 0) // 8 PM diary entry
+        
+        exampleEvents.push({
+          id: `ex-diary-${daysAgo}`,
+          title: 'diary',
+          start: diaryDate.toISOString(),
+          end: new Date(diaryDate.getTime() + 10 * 60000).toISOString(), // 10 min
+          tags: ['diary'],
+          description: diaryPrompts[idx % diaryPrompts.length],
+        })
+      })
+      
       setCalendarEvents(exampleEvents.map(ev => ({
         ...ev,
         start: new Date(ev.start),
@@ -389,6 +483,9 @@ export default function AnalyticsPage() {
   useEffect(() => {
     try { localStorage.setItem('analytics_selected_vocab_subject', selectedVocabSubject) } catch {}
   }, [selectedVocabSubject])
+  useEffect(() => {
+    try { localStorage.setItem('analytics_happiness_range', happinessRange) } catch {}
+  }, [happinessRange])
 
   // Compute active date range
   const activeRange = useMemo(()=>{
@@ -467,13 +564,31 @@ export default function AnalyticsPage() {
     return { totalMins, avgLen, dailyMins, burnout, procrastination, streak }
   }, [calendarEvents, weekRange])
 
-  // Goals achieved this week from CSV (reached_goal yes)
+  // Goals achieved this week from CSV and calendar events
   const goalsAchievedThisWeek = useMemo(()=>{
     const { start, end } = weekRange
     let yes = 0
-    studyRows.forEach(r=>{ const d=new Date(r.ended_at||r.date||r.started_at); if(isNaN(d.getTime())|| d<start || d>end) return; const ok=(r.reached_goal||'').toLowerCase().startsWith('y'); if (ok) yes++ })
+    // From CSV
+    studyRows.forEach(r=>{ 
+      const d=new Date(r.ended_at||r.date||r.started_at); 
+      if(isNaN(d.getTime())|| d<start || d>end) return; 
+      // Check goal_achievement field first
+      if (r.goal_achievement === 0.5 || r.goal_achievement === '0.5' || r.goal_achievement === 1 || r.goal_achievement === '1') {
+        yes++
+      } else {
+        // Fallback to old reached_goal field
+        const ok=(r.reached_goal||'').toLowerCase().startsWith('y'); 
+        if (ok) yes++
+      }
+    })
+    // From calendar events
+    calendarEvents.forEach(e=>{
+      if (e.start >= start && e.start <= end && typeof e.goalAchievement === 'number' && e.goalAchievement >= 0.5) {
+        yes++
+      }
+    })
     return yes
-  }, [studyRows, weekRange])
+  }, [studyRows, calendarEvents, weekRange])
 
   // Today average energy (warn if <= 2)
   const todayEnergyAvg = useMemo(()=>{
@@ -758,12 +873,11 @@ export default function AnalyticsPage() {
     }
   }, [rangeFilteredRows, rangeCalendarEvents, activeRange])
 
-  // Long-term happiness over time (from earliest data to today, excluding future)
+  // Happiness over time with configurable range
   const happinessOverTime = useMemo(()=>{
     const now = new Date()
     // Aggregate happiness per day from CSV and calendar
     const map: Record<string, number[]> = {}
-    let minDate: Date | null = null
     studyRows.forEach(r=>{
       const d = new Date(r.ended_at || r.date || r.started_at)
       if (isNaN(d.getTime()) || d > now) return
@@ -771,9 +885,6 @@ export default function AnalyticsPage() {
         const key = d.toISOString().slice(0,10)
         if (!map[key]) map[key] = []
         map[key].push(Number(r.happiness))
-      }
-      if (!isNaN(d.getTime())) {
-        if (!minDate || d < minDate) minDate = d
       }
     })
     calendarEvents.forEach(e=>{
@@ -784,11 +895,19 @@ export default function AnalyticsPage() {
         if (!map[key]) map[key] = []
         map[key].push(Number(e.moodAfter))
       }
-      if (!minDate || d < minDate) minDate = d
     })
-    if (!minDate) return [] as {date:string, happiness:number|null}[]
-    const start = new Date(minDate)
+    
+    // Determine start date based on happiness range selection
+    const start = new Date(now)
     start.setHours(0,0,0,0)
+    if (happinessRange === 'week') {
+      start.setDate(start.getDate() - 6)
+    } else if (happinessRange === 'month') {
+      start.setDate(start.getDate() - 29)
+    } else if (happinessRange === 'year') {
+      start.setDate(start.getDate() - 364)
+    }
+    
     const days: {date:string, happiness:number|null}[] = []
     const cursor = new Date(start)
     while (cursor <= now) {
@@ -798,7 +917,7 @@ export default function AnalyticsPage() {
       cursor.setDate(cursor.getDate() + 1)
     }
     return days
-  }, [studyRows, calendarEvents])
+  }, [studyRows, calendarEvents, happinessRange])
 
   // Clearer correlations over active range: daily aggregates across Happiness, Breaks, Study time, Energy, Goal rate, Hardness
   const correlationMatrix = useMemo(()=>{
@@ -1626,97 +1745,99 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              {/* Goal Achievement Analysis */}
-              {goalAchievementStats && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Goal Setting Analysis ({rangeLabel})</CardTitle>
-                    <CardDescription>Shows if your goals are too easy (more), just right (exact), or too hard (less)</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-red-600">Too Hard (Less than goal)</span>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-red-600">{goalAchievementStats.less.count}</div>
-                            <div className="text-xs text-muted-foreground">{goalAchievementStats.less.percentage}%</div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-green-600">Just Right (Exact goal)</span>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">{goalAchievementStats.exact.count}</div>
-                            <div className="text-xs text-muted-foreground">{goalAchievementStats.exact.percentage}%</div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-blue-600">Too Easy (More than goal)</span>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-blue-600">{goalAchievementStats.more.count}</div>
-                            <div className="text-xs text-muted-foreground">{goalAchievementStats.more.percentage}%</div>
-                          </div>
-                        </div>
-                        <div className="pt-2 border-t">
+              {/* Goal Setting Analysis and Time by Activity Category side-by-side */}
+              <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Goal Achievement Analysis */}
+                {goalAchievementStats && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Goal Setting Analysis ({rangeLabel})</CardTitle>
+                      <CardDescription>Shows if your goals are too easy (more), just right (exact), or too hard (less)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">Average Achievement</span>
-                            <span className="text-lg font-bold">{goalAchievementStats.averageAchievement}</span>
+                            <span className="text-sm font-medium text-red-600">Too Hard (Less than goal)</span>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-red-600">{goalAchievementStats.less.count}</div>
+                              <div className="text-xs text-muted-foreground">{goalAchievementStats.less.percentage}%</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            0 = always less, 0.5 = perfect, 1 = always more
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-green-600">Just Right (Exact goal)</span>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-green-600">{goalAchievementStats.exact.count}</div>
+                              <div className="text-xs text-muted-foreground">{goalAchievementStats.exact.percentage}%</div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-blue-600">Too Easy (More than goal)</span>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-blue-600">{goalAchievementStats.more.count}</div>
+                              <div className="text-xs text-muted-foreground">{goalAchievementStats.more.percentage}%</div>
+                            </div>
+                          </div>
+                          <div className="pt-2 border-t">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium">Average Achievement</span>
+                              <span className="text-lg font-bold">{goalAchievementStats.averageAchievement}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              0 = always less, 0.5 = perfect, 1 = always more
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="h-48">
-                        <ResponsiveContainer>
-                          <RPieChart>
-                            <Pie 
-                              data={[
-                                { name: 'Too Hard', value: goalAchievementStats.less.count, fill: '#dc2626' },
-                                { name: 'Just Right', value: goalAchievementStats.exact.count, fill: '#16a34a' },
-                                { name: 'Too Easy', value: goalAchievementStats.more.count, fill: '#2563eb' }
-                              ]} 
-                              dataKey="value" 
-                              nameKey="name" 
-                              innerRadius={50} 
-                              outerRadius={80}
-                            />
-                            <RTooltip formatter={(v:any,n:any)=> [`${v} sessions`, n]} />
-                            <Legend/>
-                          </RPieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    {goalAchievementStats.averageAchievement < 0.4 && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                        <div className="text-sm font-medium text-red-800">⚠️ Goal Setting Tip</div>
-                        <div className="text-sm text-red-700 mt-1">
-                          Your goals might be too ambitious. Consider setting smaller, more achievable goals to build momentum.
+                        <div className="h-48">
+                          <ResponsiveContainer>
+                            <RPieChart>
+                              <Pie 
+                                data={[
+                                  { name: 'Too Hard', value: goalAchievementStats.less.count, fill: '#dc2626' },
+                                  { name: 'Just Right', value: goalAchievementStats.exact.count, fill: '#16a34a' },
+                                  { name: 'Too Easy', value: goalAchievementStats.more.count, fill: '#2563eb' }
+                                ]} 
+                                dataKey="value" 
+                                nameKey="name" 
+                                innerRadius={35} 
+                                outerRadius={60}
+                              />
+                              <RTooltip formatter={(v:any,n:any)=> [`${v} sessions`, n]} />
+                              <Legend/>
+                            </RPieChart>
+                          </ResponsiveContainer>
                         </div>
                       </div>
-                    )}
-                    {goalAchievementStats.averageAchievement > 0.7 && (
-                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                        <div className="text-sm font-medium text-blue-800">🎯 Goal Setting Tip</div>
-                        <div className="text-sm text-blue-700 mt-1">
-                          You're consistently exceeding your goals! Consider setting more challenging goals to maximize your growth.
+                      {goalAchievementStats.averageAchievement < 0.4 && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                          <div className="text-sm font-medium text-red-800">⚠️ Goal Setting Tip</div>
+                          <div className="text-sm text-red-700 mt-1">
+                            Your goals might be too ambitious. Consider setting smaller, more achievable goals to build momentum.
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {goalAchievementStats.averageAchievement >= 0.4 && goalAchievementStats.averageAchievement <= 0.7 && (
-                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                        <div className="text-sm font-medium text-green-800">✅ Goal Setting Tip</div>
-                        <div className="text-sm text-green-700 mt-1">
-                          Great balance! Your goals are challenging but achievable. Keep it up!
+                      )}
+                      {goalAchievementStats.averageAchievement > 0.7 && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <div className="text-sm font-medium text-blue-800">🎯 Goal Setting Tip</div>
+                          <div className="text-sm text-blue-700 mt-1">
+                            You're consistently exceeding your goals! Consider setting more challenging goals to maximize your growth.
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                      )}
+                      {goalAchievementStats.averageAchievement >= 0.4 && goalAchievementStats.averageAchievement <= 0.7 && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <div className="text-sm font-medium text-green-800">✅ Goal Setting Tip</div>
+                          <div className="text-sm text-green-700 mt-1">
+                            Great balance! Your goals are challenging but achievable. Keep it up!
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Activity categories time pie */}
-              <Card className="lg:col-span-2">
+                {/* Activity categories time pie */}
+                <Card>
                 <CardHeader>
                   <CardTitle>Time by activity category (tags) ({rangeLabel})</CardTitle>
                 </CardHeader>
@@ -1768,7 +1889,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1 h-80 w-full">
                       <ResponsiveContainer>
                         <RPieChart>
-                          <Pie data={categoryPie} dataKey="value" nameKey="name" innerRadius={70} outerRadius={110}>
+                          <Pie data={categoryPie} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85}>
                             {categoryPie.map((entry, index) => {
                               const name = (entry as any).name as string
                               const color = name === 'study' ? '#16a34a' : name === 'break' ? '#f59e0b' : ['#94a3b8','#60a5fa','#22d3ee','#a78bfa','#f472b6'][index % 5]
@@ -1783,6 +1904,7 @@ export default function AnalyticsPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
 
               <Card className="lg:col-span-2">
                 <CardHeader>
@@ -1839,10 +1961,35 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {/* Long-term happiness over time */}
+          {/* Happiness over time with range controls */}
           <Card>
             <CardHeader>
-              <CardTitle>Happiness over time (from first record to today)</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Happiness over time</span>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant={happinessRange === 'week' ? 'default' : 'outline'}
+                    onClick={() => setHappinessRange('week')}
+                  >
+                    Week
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={happinessRange === 'month' ? 'default' : 'outline'}
+                    onClick={() => setHappinessRange('month')}
+                  >
+                    Month
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={happinessRange === 'year' ? 'default' : 'outline'}
+                    onClick={() => setHappinessRange('year')}
+                  >
+                    Year
+                  </Button>
+                </div>
+              </CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               <ResponsiveContainer>
