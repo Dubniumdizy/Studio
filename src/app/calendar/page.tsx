@@ -406,6 +406,36 @@ export default function EnhancedCalendarPage() {
     try { localStorage.setItem('calendar_hour_range', JSON.stringify({ start: minHour, end: maxHour })) } catch {}
   }, [minHour, maxHour])
 
+  // Warning thresholds state
+  const [breakWarningHours, setBreakWarningHours] = useState<number>(3)
+  const [procrastinationDays, setProcrastinationDays] = useState<number>(2)
+  const [burnoutHours, setBurnoutHours] = useState<number>(5)
+  const [warningSettingsOpen, setWarningSettingsOpen] = useState(false)
+  
+  // Load warning thresholds from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('calendar_warning_thresholds')
+      if (raw) {
+        const obj = JSON.parse(raw)
+        if (typeof obj.breakWarningHours === 'number') setBreakWarningHours(Math.max(1, Math.min(12, obj.breakWarningHours)))
+        if (typeof obj.procrastinationDays === 'number') setProcrastinationDays(Math.max(1, Math.min(14, obj.procrastinationDays)))
+        if (typeof obj.burnoutHours === 'number') setBurnoutHours(Math.max(1, Math.min(24, obj.burnoutHours)))
+      }
+    } catch {}
+  }, [])
+  
+  // Save warning thresholds to localStorage
+  useEffect(() => {
+    try { 
+      localStorage.setItem('calendar_warning_thresholds', JSON.stringify({ 
+        breakWarningHours, 
+        procrastinationDays, 
+        burnoutHours 
+      })) 
+    } catch {}
+  }, [breakWarningHours, procrastinationDays, burnoutHours])
+
   // Diary modal state
   const [diaryOpen, setDiaryOpen] = useState(false)
   const [diaryPrompt, setDiaryPrompt] = useState('Something I learned today was...')
@@ -426,6 +456,11 @@ export default function EnhancedCalendarPage() {
     const isStudy = (e: any) => e?.workType === 'deep' || hasTag(e, 'study') || (((e as any).studyDifficulty ?? 0) > 0)
     const hasStudyTag = (e: any) => hasTag(e, 'study')
     const isBreak = (e: any) => e?.workType === 'break' || hasTag(e, 'break')
+    
+    // Use configurable thresholds
+    const breakThresholdHours = breakWarningHours
+    const procrastinationThresholdDays = procrastinationDays
+    const burnoutThresholdHours = burnoutHours
 
     // Minutes of overlap between event and [start, end). Coerce to Date if needed.
     const overlapMinutes = (ev: EnhancedCalendarEvent, start: Date, end: Date) => {
@@ -465,30 +500,127 @@ export default function EnhancedCalendarPage() {
       }
     }
 
-    // 2) Total study today (study tag only) > 5h, counting only overlapped minutes
+    // 2) Total study today (study tag only) > burnoutThresholdHours, counting only overlapped minutes
     const totalStudyTodayMin = todays.reduce(
       (sum, e) => sum + (hasStudyTag(e) ? overlapMinutes(e, day, nextDay) : 0),
       0
     )
-    if (totalStudyTodayMin >= 300)
-      list.push('You studied over 5 hours today. Consider taking a longer break and winding down.')
+    const burnoutThresholdMin = burnoutThresholdHours * 60
+    if (totalStudyTodayMin >= burnoutThresholdMin)
+      list.push(`You studied over ${burnoutThresholdHours} hours today. Consider taking a longer break and winding down.`)
 
-    // 4) No study today and for the last two days (window = [twoDaysAgoStart, nextDay))
-    const twoDaysAgo = new Date(day)
-    twoDaysAgo.setDate(day.getDate() - 2)
-    const twoDaysAgoStart = new Date(
-      twoDaysAgo.getFullYear(),
-      twoDaysAgo.getMonth(),
-      twoDaysAgo.getDate()
+    // 4) No study for procrastinationThresholdDays (window = [nDaysAgoStart, nextDay))
+    const nDaysAgo = new Date(day)
+    nDaysAgo.setDate(day.getDate() - procrastinationThresholdDays)
+    const nDaysAgoStart = new Date(
+      nDaysAgo.getFullYear(),
+      nDaysAgo.getMonth(),
+      nDaysAgo.getDate()
     )
-    const hadStudyLast3Days = events.some(
-      (e) => e.end > twoDaysAgoStart && e.start < nextDay && isStudy(e)
+    const hadStudyInThreshold = events.some(
+      (e) => e.end > nDaysAgoStart && e.start < nextDay && isStudy(e)
     )
-    if (!hadStudyLast3Days)
-      list.push("You haven't studied for two days. Be careful to not procrastinate")
+    if (!hadStudyInThreshold)
+      list.push(`You haven't studied for ${procrastinationThresholdDays} days. Be careful to not procrastinate`)
+
+    // 5) Check for 3+ hour gap without breaks on current day
+    const todayBreaks = todays.filter(isBreak)
+    const todayNonBreaks = todays.filter(e => !isBreak(e))
+    
+    if (todayNonBreaks.length > 0) {
+      // Get all time slots from non-break events
+      const timeSlots: Array<{ start: Date; end: Date }> = todayNonBreaks.map(e => ({
+        start: e.start instanceof Date ? e.start : new Date(e.start as any),
+        end: e.end instanceof Date ? e.end : new Date(e.end as any)
+      }));
+      
+      // Sort by start time
+      timeSlots.sort((a, b) => a.start.getTime() - b.start.getTime());
+      
+      // Check gaps between consecutive non-break events
+      for (let i = 0; i < timeSlots.length - 1; i++) {
+        const currentEnd = timeSlots[i].end;
+        const nextStart = timeSlots[i + 1].start;
+        
+        // Calculate gap in hours
+        const gapHours = (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60 * 60);
+        
+        // If there's a gap >= breakThresholdHours, check if there's a break in this gap
+        if (gapHours >= breakThresholdHours) {
+          const hasBreakInGap = todayBreaks.some(breakEvent => {
+            const breakStart = breakEvent.start instanceof Date ? breakEvent.start : new Date(breakEvent.start as any);
+            const breakEnd = breakEvent.end instanceof Date ? breakEvent.end : new Date(breakEvent.end as any);
+            // Break overlaps with the gap
+            return breakStart < nextStart && breakEnd > currentEnd;
+          });
+          
+          if (!hasBreakInGap) {
+            const startTime = currentEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const endTime = nextStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            list.push(`⚠️ ${Math.floor(gapHours)}-hour gap without a break (${startTime} - ${endTime}). Consider scheduling a break to maintain productivity.`);
+            break; // Only show one warning
+          }
+        }
+      }
+      
+      // Also check continuous work within a single long event or consecutive events
+      let continuousStart: Date | null = null;
+      let continuousEnd: Date | null = null;
+      
+      for (const slot of timeSlots) {
+        if (continuousStart === null) {
+          continuousStart = slot.start;
+          continuousEnd = slot.end;
+        } else {
+          // If this event starts within 30 minutes of the previous end, consider it continuous
+          const gapMinutes = (slot.start.getTime() - continuousEnd!.getTime()) / (1000 * 60);
+          if (gapMinutes <= 30) {
+            continuousEnd = slot.end;
+          } else {
+            // Check if the continuous period was breakThresholdHours+ without a break
+            const continuousHours = (continuousEnd!.getTime() - continuousStart!.getTime()) / (1000 * 60 * 60);
+            if (continuousHours >= breakThresholdHours) {
+              const hasBreakInPeriod = todayBreaks.some(breakEvent => {
+                const breakStart = breakEvent.start instanceof Date ? breakEvent.start : new Date(breakEvent.start as any);
+                const breakEnd = breakEvent.end instanceof Date ? breakEvent.end : new Date(breakEvent.end as any);
+                return breakStart >= continuousStart! && breakEnd <= continuousEnd!;
+              });
+              
+              if (!hasBreakInPeriod) {
+                const startTime = continuousStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                const endTime = continuousEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                list.push(`⚠️ ${Math.floor(continuousHours)}-hour continuous work without a break (${startTime} - ${endTime}). Add a break to avoid burnout.`);
+                break;
+              }
+            }
+            // Reset for new continuous period
+            continuousStart = slot.start;
+            continuousEnd = slot.end;
+          }
+        }
+      }
+      
+      // Check the last continuous period
+      if (continuousStart && continuousEnd) {
+        const continuousHours = (continuousEnd.getTime() - continuousStart.getTime()) / (1000 * 60 * 60);
+        if (continuousHours >= breakThresholdHours) {
+          const hasBreakInPeriod = todayBreaks.some(breakEvent => {
+            const breakStart = breakEvent.start instanceof Date ? breakEvent.start : new Date(breakEvent.start as any);
+            const breakEnd = breakEvent.end instanceof Date ? breakEvent.end : new Date(breakEvent.end as any);
+            return breakStart >= continuousStart! && breakEnd <= continuousEnd!;
+          });
+          
+          if (!hasBreakInPeriod && !list.some(w => w.includes('continuous work without a break'))) {
+            const startTime = continuousStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const endTime = continuousEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            list.push(`⚠️ ${Math.floor(continuousHours)}-hour continuous work without a break (${startTime} - ${endTime}). Add a break to avoid burnout.`);
+          }
+        }
+      }
+    }
 
     return Array.from(new Set(list))
-  }, [events, currentDate])
+  }, [events, currentDate, breakWarningHours, procrastinationDays, burnoutHours])
 
   // Example data toggle state
   const [exampleDataActive, setExampleDataActive] = useState(false);
@@ -2175,6 +2307,112 @@ export default function EnhancedCalendarPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Warning Settings Dialog */}
+      <Dialog open={warningSettingsOpen} onOpenChange={setWarningSettingsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Calendar Warning Settings</DialogTitle>
+            <DialogDescription>
+              Customize when you receive warnings about breaks, procrastination, and burnout.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Break Warning</label>
+                  <p className="text-xs text-muted-foreground">Warn when working continuously or when there's a large gap without breaks</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold">{breakWarningHours}h</div>
+                </div>
+              </div>
+              <Slider 
+                value={[breakWarningHours]} 
+                min={1} 
+                max={12} 
+                step={0.5} 
+                onValueChange={([v]) => setBreakWarningHours(v)} 
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 hour</span>
+                <span>12 hours</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Procrastination Warning</label>
+                  <p className="text-xs text-muted-foreground">Warn when you haven't studied for this many days</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold">{procrastinationDays} {procrastinationDays === 1 ? 'day' : 'days'}</div>
+                </div>
+              </div>
+              <Slider 
+                value={[procrastinationDays]} 
+                min={1} 
+                max={14} 
+                step={1} 
+                onValueChange={([v]) => setProcrastinationDays(v)} 
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 day</span>
+                <span>14 days</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium">Burnout Warning</label>
+                  <p className="text-xs text-muted-foreground">Warn when total study time exceeds this amount in a day</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold">{burnoutHours}h</div>
+                </div>
+              </div>
+              <Slider 
+                value={[burnoutHours]} 
+                min={1} 
+                max={24} 
+                step={0.5} 
+                onValueChange={([v]) => setBurnoutHours(v)} 
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 hour</span>
+                <span>24 hours</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg text-sm">
+              <p className="font-medium mb-2">💡 Tips:</p>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>• Break warnings help maintain productivity and prevent fatigue</li>
+                <li>• Procrastination warnings keep you on track with your study goals</li>
+                <li>• Burnout warnings remind you to rest and recharge</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { 
+              setBreakWarningHours(3); 
+              setProcrastinationDays(2); 
+              setBurnoutHours(5); 
+            }}>
+              Reset to Defaults
+            </Button>
+            <DialogClose asChild>
+              <Button>Save</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         title="Calendar"
         description="Manage your schedule, habits, and tasks"
@@ -2184,6 +2422,10 @@ export default function EnhancedCalendarPage() {
               {exampleDataActive ? 'Remove Example Data' : 'Add Example Data'}
             </Button>
             <Button variant="outline" onClick={() => setDiaryOpen(true)}>Diary</Button>
+            <Button variant="outline" onClick={() => setWarningSettingsOpen(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Warning Settings
+            </Button>
             <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
